@@ -249,7 +249,7 @@ function olaylar(d){
   (d.turlar||[]).forEach((t,i)=>ev.push({tip:"tur", tarih:t.tarih||"", tur:t, sira:1000+i, id:t.id}));
   (d.adimlar||[]).forEach((a,i)=>ev.push({tip:a.tip, tarih:a.tarih||"", adim:a, sira:2000+i, id:a.id}));
   (d.sonucAdim||[]).forEach((x,i)=>ev.push({tip:x.tip, tarih:x.tarih||"", adim:{ birim:d.birimAd, barkod:x.sayi, sayi:x.sayi }, sira:2500+i, id:x.id}));
-  (d.gdf||[]).forEach((g,i)=>ev.push({tip:g.tip, tarih:g.tarih||"", adim:{ birim:d.birimAd, barkod:g.sayi }, sira:1500+i, id:g.id}));
+  (d.kategori==="A1" ? (d.gdf||[]) : []).forEach((g,i)=>ev.push({tip:g.tip, tarih:g.tarih||"", adim:{ birim:d.birimAd, barkod:g.sayi }, sira:1500+i, id:g.id}));
   if(d.cb?.isaret) ev.push({tip:"cb", tarih:d.cb.tarih||"", sira:3000});
   ev.sort((a,b)=> (a.tarih||"").localeCompare(b.tarih||"") || a.sira-b.sira);
   let iadeVar = false; ev.forEach(e => { if(e.tip==="iade") iadeVar = true; else if(e.tip==="form" && iadeVar) e.revize = true; else if(e.tip==="istem") iadeVar = false; });
@@ -280,7 +280,7 @@ function olayMetni(d, e){
         ? `${t} tarihinde ${bl.map(b=>b.kisa||b.ad).join(", ")} görüşüne açıldı.`
         : `${t} tarihinde ${tip} açıldı.`;
       if(e.tur.sonTarih) a = a.replace(/\.$/, `, ${tarih(e.tur.sonTarih)} tarihine kadar süre verildi.`);
-      if(hepsi) return { a: a+" Görüş süreci tamamlandı.", b:"Görüş değerlendirme istemi hazırlanıyor." };
+      if(hepsi) return { a: a+" Görüş süreci tamamlandı.", b: d.kategori==="A1" ? "Görüş değerlendirme istemi hazırlanıyor." : d.kategori==="B" ? "Bakanlık görüşü hazırlanıyor." : d.kategori==="A2" ? "Genel Müdürlüğümüz görüşü hazırlanıyor." : "Cevap yazısı hazırlanıyor." };
       return { a, b:"" };
     }
     case "istem": return { a:`Görüş değerlendirme istemi ${t} tarihinde ${yonelme(e.adim.birim||d.birimAd)} gönderildi.`, b:"Görüş değerlendirme formunun Genel Müdürlüğümüze gönderilmesi bekleniyor." };
@@ -638,7 +638,7 @@ async function vDosya(m, r){
     <dt>Sorumlu</dt><dd>${esc(d.sorumluAd||userName(d.atananEmail)||"Atanmadı")}</dd>
     <dt>Destek alınan hukukçu</dt><dd>${(d.destekHukukcular||[]).map(esc).join(", ")||"—"} ${ew?`<button class="btn sm" data-x="hukukcu">Düzenle</button>`:""}</dd>
     ${d.cb?.isaret?`<dt>Cumhurbaşkanlığı teklif yazısı</dt><dd>${tarih(d.cb.tarih)} – ${esc(d.cb.sayi)}</dd>`:""}
-    ${d.sonuc?.tur?`<dt>Sonuç</dt><dd>${esc(d.sonuc.tur)} (${tarih(d.sonuc.tarih)})${d.sonuc.rgSayi?` – ${esc(d.sonuc.rgSayi)}`:""}</dd>`:""}
+    ${d.sonuc?.tur?`<dt>Sonuç</dt><dd>${esc(d.sonuc.tur)} (${tarih(d.sonuc.tarih)})${d.sonuc.rgSayi?` – ${esc(d.sonuc.rgSayi)}`:""}${d.sonuc.aciklama?`<br>${esc(d.sonuc.aciklama)}`:""}</dd>`:""}
     ${d.aciklama?`<dt>Açıklama</dt><dd>${esc(d.aciklama)}</dd>`:""}
   </dl></div>
   <div class="panel"><h3 style="margin-top:0">Rapordaki görünümü</h3>
@@ -651,12 +651,12 @@ async function vDosya(m, r){
   ${(d.turlar||[]).length ? d.turlar.map(t=>turHtml(d,t,ew)).join("") : `<div class="empty">Henüz görüşe açılmadı.</div>`}
   ${ew?`<p><button class="btn p" data-x="turekle">Görüşe aç</button></p>`:""}
 
-  ${d.kategori==="A1" ? `<h2>Görüş değerlendirme formu</h2>${gdfHtml(d, ew)}` : (gdfListe(d).length ? `<h2>Görüş değerlendirme formu</h2>${gdfHtml(d, false)}<p class="hint">Görüş değerlendirme formu sadece A1 dosyalarında kullanılır. Bu kayıtlar dosyanın kategorisi değişmeden önce girilmiş.</p>` : "")}
+  ${d.kategori==="A1" ? `<h2>Görüş değerlendirme formu</h2>${gdfHtml(d, ew)}` : ""}
 
   ${d.kategori==="A1" ? `<h2>Nihai işlemler</h2>${nihaiHtml(d, ew)}` : ""}
 
   <h2>Süreç adımları</h2>
-  <p class="hint" style="margin-top:-6px">Son kontrol ve raportör dönüşü gibi aşamayı değiştiren diğer yazılar. Haftalık rapordaki açıklamalar görüş turları, görüş değerlendirme formu, nihai işlemler ve bu adımlardan oluşur; hangisi en son tarihliyse rapora o yansır.</p>
+  <p class="hint" style="margin-top:-6px">${d.kategori==="A1" ? "Son kontrol ve raportör dönüşü gibi aşamayı değiştiren diğer yazılar. Haftalık rapordaki açıklamalar görüş turları, görüş değerlendirme formu, nihai işlemler ve bu adımlardan oluşur; hangisi en son tarihliyse rapora o yansır." : "Aşamayı değiştiren diğer yazılar. Rapordaki açıklamalar görüş turları ve bu adımlardan oluşur; hangisi en son tarihliyse rapora o yansır."}</p>
   ${(d.adimlar||[]).filter(a=>ADIM[a.tip]).length ? `<ul class="tl">${[...d.adimlar].filter(a=>ADIM[a.tip]).sort((a,b)=>(a.tarih||"").localeCompare(b.tarih||"")).map(a=>`<li><b>${esc((ADIM[a.tip]||ADIM_ESKI[a.tip])||a.tip)}</b> – ${tarih(a.tarih)}${a.birim?` – ${esc(a.birim)}`:""}${a.barkod?` <span class="num">(${esc(a.barkod)})</span>`:""}${a.not?`<br>${esc(a.not)}`:""}<br><small>${esc(a.ekleyen||"")}</small> ${ew?`<button class="btn sm danger" data-x="adimsil" data-id="${a.id}">Sil</button>`:""}</li>`).join("")}</ul>` : `<div class="empty">Adım girilmedi.</div>`}
   ${ew?`<p><button class="btn" data-x="adimekle">Adım ekle</button></p>`:""}
 
@@ -746,15 +746,23 @@ const DX = {
       : { tur:"Yürürlüğe girdi", tarih:(rg||olur||son).tarih, rg: rg ? `RG ${tarih(rg.tarih)} / ${rg.sayi}` : olur ? `Olur ${tarih(olur.tarih)} / ${olur.sayi}` : "" };
     const m = modal(`<h2>Tamamlandı olarak işaretle</h2><p class="sub">Dosya önce uzman yardımcısının, sonra yöneticilerden birinin onayına gider.${son?" Sonuç bilgileri nihai işlemlerden dolduruldu.":""}</p>
       <form><label class="f"><span>Sonuç</span><select name="tur" required>${secenekler.map(s=>`<option ${s===on.tur?"selected":""}>${s}</option>`).join("")}</select></label>
-      <label class="f"><span>Sonuç tarihi</span><input type="date" name="tarih" value="${esc(on.tarih)}" required></label>
-      ${d.kategori==="A1" ? `<label class="f"><span>RG sayısı ya da olur barkodu</span><input type="text" name="rg" value="${esc(on.rg)}" placeholder="Yürürlüğe girdiyse doldurun"></label>` : `<input type="hidden" name="rg" value="">`}</form>
+      <label class="f"><span>Yazının tarihi</span><input type="date" name="tarih" value="${esc(on.tarih)}" required></label>
+      <label class="f"><span id="rgl">Yazının sayısı / barkodu</span><input type="text" name="rg" value="${esc(on.rg)}"></label>
+      <label class="f" id="dgl" hidden><span>Açıklama</span><textarea name="acik" placeholder="Sonucun ne olduğunu kısaca yazın. Örn. Taslak başka bir düzenlemeyle birleştirildi."></textarea></label></form>
       <div class="foot"><button class="btn" data-k>Vazgeç</button><button class="btn p" data-ok>Tamamlandı</button></div>`);
+    const sel = m.querySelector("select[name=tur]");
+    const guncel = () => { const t = sel.value; m.querySelector("#dgl").hidden = t!=="Diğer";
+      m.querySelector("#rgl").textContent = t==="Yürürlüğe girdi" ? "RG sayısı ya da olur barkodu" : "Yazının sayısı / barkodu";
+      m.querySelector("input[name=rg]").placeholder = t==="Yürürlüğe girdi" ? "Resmî Gazete ya da olur sayısı" : t==="Diğer" ? "Varsa ilgili yazının sayısı" : "Görüş, cevap, iade ya da geri çekme yazısının sayısı"; };
+    sel.onchange = guncel; guncel();
     m.querySelector("[data-k]").onclick=kapat;
     m.querySelector("[data-ok]").onclick = async () => { const v = fd(m);
       if(v.tur==="Yürürlüğe girdi" && !v.rg.trim()) return toast("Yürürlüğe giren dosyada RG sayısı ya da olur barkodu gerekli.");
+      if(v.tur==="Diğer" && !(v.acik||"").trim()) return toast("Diğer seçildiğinde açıklama gerekli.");
+      if(v.tur!=="Diğer" && v.tur!=="Yürürlüğe girdi" && !v.rg.trim() && !confirm("Yazının sayısını girmeden devam edilsin mi?")) return;
       const dogrudan = !d.atananEmail;
-      try{ await dosyaGuncelle(d, { durum: dogrudan?"onay_yonetici":"onay_uzman", sonuc:{tur:v.tur, tarih:v.tarih, rgSayi:v.rg.trim()},
-          onay:{ tamamlayan:myName(), tamamlayanEmail:S.email, tamamlamaZamani:bugun() } }, `Tamamlandı olarak işaretlendi (${v.tur})`);
+      try{ await dosyaGuncelle(d, { durum: dogrudan?"onay_yonetici":"onay_uzman", sonuc:{tur:v.tur, tarih:v.tarih, rgSayi:v.rg.trim(), aciklama:v.tur==="Diğer" ? (v.acik||"").trim() : ""},
+          onay:{ tamamlayan:myName(), tamamlayanEmail:S.email, tamamlamaZamani:bugun() } }, `Tamamlandı olarak işaretlendi (${v.tur}${v.tur==="Diğer"?": "+(v.acik||"").trim():""})`);
         if(dogrudan) await bildir(yoneticiler(), "Arşiv onayı bekleyen dosya", `${d.dosyaNo} – ${d.ad}`, d.id);
         else await bildir([d.atananEmail], "Dosya tamamlandı, onayınız bekleniyor", `${d.dosyaNo} – ${d.ad}`, d.id);
         kapat(); toast("Onaya gönderildi"); }catch(x){ hata(x); } };
@@ -1136,8 +1144,8 @@ async function rDonem(m, r){
   m.querySelector("#uyg").onclick = () => { const k=[...m.querySelectorAll("input[name=k]:checked")].map(x=>x.value).join(",");
     location.hash = "#/rapor/donem?"+new URLSearchParams({ b:m.querySelector("#rb").value, s:m.querySelector("#rs").value, k }); };
   m.querySelector("#csv").onclick = () => {
-    const satirlar = [["Dosya no","Kategori","Ad","Tür","Birim/kurum","Geliş tarihi","Durum","Sonuç","Sonuç tarihi","RG/olur","Sorumlu"],
-      ...gelen.map(d=>[d.dosyaNo,d.kategori,d.ad,d.tur,d.birimAd,tarih(d.gelisTarihi),DURUM[d.durum],d.sonuc?.tur||"",tarih(d.sonuc?.tarih),d.sonuc?.rgSayi||"",d.sorumluAd||userName(d.atananEmail)])];
+    const satirlar = [["Dosya no","Kategori","Ad","Tür","Birim/kurum","Geliş tarihi","Durum","Sonuç","Sonuç tarihi","Sonuç sayısı (RG/olur/yazı)","Sonuç açıklaması","Sorumlu"],
+      ...gelen.map(d=>[d.dosyaNo,d.kategori,d.ad,d.tur,d.birimAd,tarih(d.gelisTarihi),DURUM[d.durum],d.sonuc?.tur||"",tarih(d.sonuc?.tarih),d.sonuc?.rgSayi||"",d.sonuc?.aciklama||"",d.sorumluAd||userName(d.atananEmail)])];
     const csv = "\ufeff"+satirlar.map(r=>r.map(c=>`"${String(c??"").replace(/"/g,'""')}"`).join(";")).join("\r\n");
     indir(new Blob([csv],{type:"text/csv;charset=utf-8"}), `Gelen dosyalar ${tarih(bas)}-${tarih(bit)}.csv`); };
 }
