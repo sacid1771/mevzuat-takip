@@ -1041,10 +1041,10 @@ function vAyarlar(m, r){
   const ust = `<h1>Ayarlar</h1><div class="tabs">${tabs.map(([k,t])=>`<a href="#/${k==="aktarim"?"aktarim":"ayarlar/"+k}" class="${sek===k?"on":""}">${t}</a>`).join("")}</div>`;
   if(sek==="kisiler"){
     const us = Object.values(S.users).sort((a,b)=>(b.aktif-a.aktif) || a.ad.localeCompare(b.ad,"tr"));
-    m.innerHTML = ust + `<p class="sub">Sadece bu listedeki aktif Gmail adresleri sisteme girebilir.</p>
+    m.innerHTML = ust + `<p class="sub">Sadece bu listedeki aktif Gmail adresleri sisteme girebilir. Gmail adresi eklenmemiş kişilere dosya atanabilir ama bu kişiler giriş yapamaz ve e-posta almaz.</p>
       <div class="row" style="margin-bottom:10px"><button class="btn p" id="kyeni">Kişi ekle</button></div>
       <div class="scroll"><table class="t"><thead><tr><th>Ad soyad</th><th>Gmail</th><th>Rol</th><th>Durum</th><th class="n">Aktif dosya</th><th></th></tr></thead><tbody>
-      ${us.map(u=>`<tr><td>${esc(u.ad)}</td><td>${esc(u.email)}</td><td>${ROL[u.rol]||u.rol}</td><td>${u.aktif?"Aktif":"<span class='sub'>Pasif</span>"}</td>
+      ${us.map(u=>`<tr><td>${esc(u.ad)}</td><td>${epostaYok(u.email)?"<span class='sub'>Eklenmedi</span>":esc(u.email)}</td><td>${ROL[u.rol]||u.rol}</td><td>${u.aktif?"Aktif":"<span class='sub'>Pasif</span>"}</td>
         <td class="n">${Object.values(S.dosyalar).filter(d=>d.atananEmail===u.email).length}</td><td><button class="btn sm" data-u="${esc(u.email)}">Düzenle</button></td></tr>`).join("") || `<tr><td colspan="6" class="sub">Henüz kimse eklenmedi.</td></tr>`}</tbody></table></div>`;
     m.querySelector("#kyeni").onclick = () => kisiModal(null);
     m.querySelectorAll("[data-u]").forEach(b => b.onclick = () => kisiModal(S.users[b.dataset.u]));
@@ -1076,24 +1076,39 @@ function vAyarlar(m, r){
       try{ await setDoc(doc(db,"ayarlar","genel"), { turler:t }, { merge:true }); toast("Kaydedildi"); }catch(e){ hata(e); } };
   }
 }
+const EPOSTA_YOK = "@eposta-yok.local";
+const epostaYok = e => String(e||"").endsWith(EPOSTA_YOK);
+function yerTutucu(ad){ const t = {"ç":"c","ğ":"g","ı":"i","ö":"o","ş":"s","ü":"u"};
+  return ad.toLocaleLowerCase("tr").replace(/[çğıöşü]/g,c=>t[c]).replace(/[^a-z0-9]+/g,".").replace(/^\.|\.$/g,"") + EPOSTA_YOK; }
 function kisiModal(u){
   const yeni = !u;
   const m = modal(`<h2>${yeni?"Kişi ekle":esc(u.ad)}</h2><form>
     <label class="f"><span>Ad soyad</span><input type="text" name="ad" value="${esc(u?.ad||"")}" required><div class="hint">Excel'deki yazımla aynı olursa eski kayıtlar bu kişiyle eşleşir.</div></label>
-    <label class="f"><span>Gmail adresi</span><input type="email" name="email" value="${esc(u?.email||"")}" ${yeni?"":"disabled"} required></label>
+    <label class="f"><span>Gmail adresi</span><input type="email" name="email" value="${esc(u && !epostaYok(u.email) ? u.email : "")}" placeholder="Şimdilik boş bırakabilirsiniz">
+      <div class="hint">Boş bırakırsanız kişi listede yer alır, dosya atanabilir ama sisteme giremez ve e-posta almaz. Adresi sonra buradan ekleyebilirsiniz.</div></label>
     <label class="f"><span>Rol</span><select name="rol">${["uzman","atayan","yonetici"].map(r=>`<option value="${r}" ${u?.rol===r?"selected":""}>${ROL[r]}</option>`).join("")}</select></label>
-    ${yeni?"":`<label class="row"><input type="checkbox" name="aktif" ${u.aktif?"checked":""}> Aktif (sisteme girebilir)</label>`}</form>
+    ${yeni?"":`<label class="row"><input type="checkbox" name="aktif" ${u.aktif?"checked":""}> Aktif</label>`}</form>
     <p class="err" id="ke"></p><div class="foot"><button class="btn" data-k>Vazgeç</button><button class="btn p" data-ok>Kaydet</button></div>`);
   m.querySelector("[data-k]").onclick = kapat;
   m.querySelector("[data-ok]").onclick = async () => {
-    const f = m.querySelector("form"); const ad = f.ad.value.trim(), email = (yeni?f.email.value:u.email).trim().toLowerCase(), rol = f.rol.value, aktif = yeni ? true : f.aktif.checked;
-    if(!ad || !email.includes("@")) { m.querySelector("#ke").textContent = "Ad ve geçerli bir e-posta gerekli."; return; }
-    if(yeni && S.users[email]) { m.querySelector("#ke").textContent = "Bu adres zaten listede."; return; }
-    const dosyalari = Object.values(S.dosyalar).filter(d=>d.atananEmail===email);
+    const f = m.querySelector("form"), ke = m.querySelector("#ke");
+    const ad = f.ad.value.trim(), rol = f.rol.value, aktif = yeni ? true : f.aktif.checked;
+    let email = f.email.value.trim().toLowerCase();
+    if(!ad){ ke.textContent = "Ad soyad gerekli."; return; }
+    if(email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ ke.textContent = "Geçerli bir e-posta adresi girin."; return; }
+    if(!email) email = (u && epostaYok(u.email)) ? u.email : yerTutucu(ad);
+    const eski = u?.email;
+    if(email !== eski && S.users[email]){ ke.textContent = "Bu adres başka bir kişide kayıtlı."; return; }
     try{
       await setDoc(doc(db,"kullanicilar",email), { ad, email, rol, aktif }, { merge:true });
+      if(eski && email !== eski){
+        m.querySelector("[data-ok]").disabled = true; ke.textContent = "Dosyalar yeni adrese taşınıyor…";
+        const q = await getDocs(query(collection(db,"dosyalar"), where("atananEmail","==",eski)));
+        for(let i=0;i<q.docs.length;i+=400){ const b = writeBatch(db); q.docs.slice(i,i+400).forEach(x=>b.update(x.ref,{ atananEmail:email, sorumluAd:ad })); await b.commit(); }
+        await deleteDoc(doc(db,"kullanicilar",eski)); S.arsiv = null;
+      }
+      const dosyalari = Object.values(S.dosyalar).filter(d=>d.atananEmail===email || d.atananEmail===eski);
       if(!yeni && dosyalari.length && u.rol==="uzman" && (rol!=="uzman" || !aktif)) { kapat(); devirModal(email, dosyalari); return; }
-      if(!yeni && u.rol==="atayan" && rol!=="atayan") toast("Atayan değişti. Reddedilip bekleyen onay bildirimleri yeni Atayan'a yönlendirilecek.");
       kapat(); toast("Kaydedildi");
     }catch(e){ hata(e); }
   };
