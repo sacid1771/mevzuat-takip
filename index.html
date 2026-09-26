@@ -647,11 +647,12 @@ async function vDosya(m, r){
   ${(d.turlar||[]).length ? d.turlar.map(t=>turHtml(d,t,ew)).join("") : `<div class="empty">Henüz görüşe açılmadı.</div>`}
   ${ew?`<p><button class="btn p" data-x="turekle">Görüşe aç</button></p>`:""}
 
-  ${d.kategori==="A1" ? `<h2>Nihai işlemler</h2>${nihaiHtml(d, ew)}` : ""}
   ${d.kategori==="A1" ? `<h2>Görüş değerlendirme formu</h2>${gdfHtml(d, ew)}` : (gdfListe(d).length ? `<h2>Görüş değerlendirme formu</h2>${gdfHtml(d, false)}<p class="hint">Görüş değerlendirme formu sadece A1 dosyalarında kullanılır. Bu kayıtlar dosyanın kategorisi değişmeden önce girilmiş.</p>` : "")}
 
+  ${d.kategori==="A1" ? `<h2>Nihai işlemler</h2>${nihaiHtml(d, ew)}` : ""}
+
   <h2>Süreç adımları</h2>
-  <p class="hint" style="margin-top:-6px">Son kontrol ve raportör dönüşü gibi aşamayı değiştiren diğer yazılar. Haftalık rapordaki açıklamalar görüş turları, görüş değerlendirme formu ve bu adımlardan oluşur.</p>
+  <p class="hint" style="margin-top:-6px">Son kontrol ve raportör dönüşü gibi aşamayı değiştiren diğer yazılar. Haftalık rapordaki açıklamalar görüş turları, görüş değerlendirme formu, nihai işlemler ve bu adımlardan oluşur; hangisi en son tarihliyse rapora o yansır.</p>
   ${(d.adimlar||[]).filter(a=>ADIM[a.tip]).length ? `<ul class="tl">${[...d.adimlar].filter(a=>ADIM[a.tip]).sort((a,b)=>(a.tarih||"").localeCompare(b.tarih||"")).map(a=>`<li><b>${esc((ADIM[a.tip]||ADIM_ESKI[a.tip])||a.tip)}</b> – ${tarih(a.tarih)}${a.birim?` – ${esc(a.birim)}`:""}${a.barkod?` <span class="num">(${esc(a.barkod)})</span>`:""}${a.not?`<br>${esc(a.not)}`:""}<br><small>${esc(a.ekleyen||"")}</small> ${ew?`<button class="btn sm danger" data-x="adimsil" data-id="${a.id}">Sil</button>`:""}</li>`).join("")}</ul>` : `<div class="empty">Adım girilmedi.</div>`}
   ${ew?`<p><button class="btn" data-x="adimekle">Adım ekle</button></p>`:""}
 
