@@ -180,8 +180,10 @@ const ADIM = {
   kontrol:"Son kontrole gönderildi",
   raportor:"Raportör dönüşü"
 };
-const VARSAYILAN_TURLER = ["Müstakil Yönetmelik","Çerçeve Yönetmelik","Müstakil Yönerge","Çerçeve Yönerge","Müstakil Tebliğ","Çerçeve Tebliğ",
-  "Genelge","Usul ve Esaslar","Protokol","Kılavuz","Eylem Planı","Cumhurbaşkanlığı Kararnamesi","Kanun","Standart","Diğer"];
+const VARSAYILAN_TURLER = ["Kanun","Müstakil Cumhurbaşkanlığı Kararnamesi","Çerçeve Cumhurbaşkanlığı Kararnamesi","Cumhurbaşkanlığı Kararnamesi İlgası",
+  "Müstakil Cumhurbaşkanı Kararı","Çerçeve Cumhurbaşkanı Kararı","Cumhurbaşkanı Kararı İlgası","Müstakil Yönetmelik","Çerçeve Yönetmelik","Yönetmelik İlgası",
+  "Müstakil Tebliğ","Çerçeve Tebliğ","Tebliğ İlgası","Müstakil Yönerge","Çerçeve Yönerge","Yönerge İlgası","Müstakil Usul ve Esaslar","Çerçeve Usul ve Esaslar",
+  "Usul ve Esaslar İlgası","Genelge","Genelge İlgası","Protokol","Standart","Rehber","Kılavuz","Eylem Planı","Diğer"];
 
 /* ---------- durum ---------- */
 const S = { user:null, email:"", me:null, role:null, users:{}, dosyalar:{}, arsiv:null, birimler:{}, hukukcular:{}, turler:[],
@@ -801,7 +803,7 @@ function dosyaFormu(d, hedef){
   <form id="df"><div class="panel">
     <label class="f"><span>Kategori</span><div class="row">${Object.entries(KATS).map(([k,t])=>`<label class="row" style="margin-right:10px"><input type="radio" name="kategori" value="${k}" ${d.kategori===k?"checked":""}> <span class="kat k-${k}">${k}</span> ${t}</label>`).join("")}</div></label>
     <div class="grid2"><label class="f"><span>Dosya no</span><input type="text" name="dosyaNo" value="${esc(d.dosyaNo||"")}" required><div class="hint">Otomatik geldi, gerekirse değiştirebilirsiniz.</div></label>
-    <label class="f"><span>Türü</span><input type="text" name="tur" list="tl" value="${esc(d.tur||"")}"><datalist id="tl">${S.turler.map(t=>`<option value="${esc(t)}">`).join("")}</datalist></label></div>
+    <label class="f"><span>Türü</span><select name="tur"><option value="">Seçin</option>${[...S.turler, ...(d.tur && !S.turler.includes(d.tur) ? [d.tur] : [])].map(t=>`<option ${t===d.tur?"selected":""}>${esc(t)}</option>`).join("")}</select><div class="hint">Liste Ayarlar > Mevzuat türleri ekranından yönetilir.</div></label></div>
     <label class="f"><span>Mevzuat ya da yazının adı</span><textarea name="ad" required>${esc(d.ad||"")}</textarea></label>
     <div class="grid2"><label class="f"><span>Hazırlayan / gönderen birim ya da kurum</span><input type="text" name="birim" id="bi" list="bil" value="${esc(d.birimAd||"")}" autocomplete="off"><datalist id="bil"></datalist><div class="hint" id="bih"></div></label>
     <label class="f"><span>Kısaltma</span><input type="text" name="kisa" id="bk" value="${esc(S.birimler[d.birimId]?.kisaltma||"")}"><div class="hint">Raporda birim adının yanında görünür (SHGM, TİTCK…).</div></label></div>
@@ -834,7 +836,6 @@ function dosyaFormu(d, hedef){
       if(v.birim.trim()){ const tur = katTur() || (Object.values(S.birimler).find(x=>norm(x.ad)===norm(v.birim))?.tur) || "ic";
         birim = await birimBulYaDaEkle(v.birim, v.kisa, tur);
         if(v.kisa.trim() && birim && v.kisa.trim()!==(birim.kisaltma||"") && isMgr()) await updateDoc(doc(db,"birimler",birim.id), { kisaltma:v.kisa.trim() }); }
-      if(v.tur.trim() && !S.turler.includes(v.tur.trim())) await setDoc(doc(db,"ayarlar","genel"), { turler:[...S.turler, v.tur.trim()] }, { merge:true });
       const veri = { kategori:v.kategori, dosyaNo:no, ad:v.ad.trim(), tur:v.tur.trim(), birimId:birim?.id||"", birimAd:birim?.ad||"",
         gelisTarihi:v.gelisTarihi, gelisBarkod:v.gelisBarkod.trim(), cevapSonTarih:v.cevapSonTarih, aciklama:v.aciklama.trim() };
       const y = new Date().getFullYear(), on = onEk(v.kategori, y);
@@ -1083,11 +1084,48 @@ function vAyarlar(m, r){
     m.querySelector("#hduz").onclick = () => hukukcuDuzenle(m.querySelector("#hdo"));
     m.querySelectorAll("[data-hs]").forEach(b => b.onclick = async () => { const h = S.hukukcular[b.dataset.hs]; if(confirm(`${h.ad} listeden silinsin mi? Eski dosyalardaki kayıtlar değişmez.`)) try{ await deleteDoc(doc(db,"hukukcular",h.id)); }catch(e){ hata(e); } });
   } else if(sek==="turler"){
-    m.innerHTML = ust + `<p class="sub">Her satıra bir tür yazın. Dosya açarken listede olmayan bir tür girilirse buraya kendiliğinden eklenir.</p>
-      <textarea id="tt" style="min-height:300px;max-width:500px">${esc(S.turler.join("\n"))}</textarea><p><button class="btn p" id="tk">Kaydet</button></p>`;
+    m.innerHTML = ust + `<p class="sub">Her satıra bir tür yazın. Dosya açarken sadece bu listeden seçim yapılabilir.</p>
+      <textarea id="tt" style="min-height:300px;max-width:500px">${esc(S.turler.join("\n"))}</textarea><p><button class="btn p" id="tk">Kaydet</button></p>
+      <div class="panel"><b>Listede olmayan türleri eşleştir</b><p class="hint" style="margin:4px 0 8px">Dosyalarda kullanılan ama yukarıdaki listede olmayan türleri bulur ve her biri için listeden bir tür önerir. Önerileri kontrol edip değiştirebilirsiniz. Önce listeyi düzenleyip kaydedin, sonra bu aracı çalıştırın.</p>
+      <button class="btn" id="tes">Kontrol et</button><div id="teo" style="margin-top:10px"></div></div>`;
+    m.querySelector("#tes").onclick = () => turEslestir(m.querySelector("#teo"));
     m.querySelector("#tk").onclick = async () => { const t = [...new Set(m.querySelector("#tt").value.split("\n").map(x=>x.trim()).filter(Boolean))];
       try{ await setDoc(doc(db,"ayarlar","genel"), { turler:t }, { merge:true }); toast("Kaydedildi"); }catch(e){ hata(e); } };
   }
+}
+function turOner(v, liste){
+  const n = norm(v).replace(/[()&]/g," ").replace(/\s+/g," ").trim();
+  const var_ = liste.find(t => norm(t) === n); if(var_) return { t:var_, emin:true };
+  const on = /ÇERÇEVE|DEĞİŞİKLİK/.test(n) ? "Çerçeve" : (/MÜSTAKİL/.test(n) ? "Müstakil" : "");
+  const bul = ad => liste.find(t => norm(t) === norm(ad));
+  const tabanlar = [["KANUN","Kanun",false],["CBK|KARARNAME","Cumhurbaşkanlığı Kararnamesi",true],["CB KARAR|CUMHURBAŞKANI KARAR|KARAR","Cumhurbaşkanı Kararı",true],
+    ["YÖNETMEL","Yönetmelik",true],["TEBLİĞ","Tebliğ",true],["YÖNERGE","Yönerge",true],["USUL","Usul ve Esaslar",true],["GENELGE","Genelge",false],
+    ["PROTOKOL","Protokol",false],["STANDART","Standart",false],["REHBER","Rehber",false],["KILAVUZ","Kılavuz",false],["\\bPLAN","Eylem Planı",false]];
+  const eslesen = tabanlar.filter(([k]) => new RegExp(k).test(n.replace("CUMHURBAŞKANLIĞI YÖNETMEL","YÖNETMEL")));
+  const ilk = eslesen[0];
+  if(!ilk) return { t: bul("Diğer") || "", emin:false };
+  if(/İLGA/.test(n)){ const il = bul(`${ilk[1]} İlgası`); if(il) return { t:il, emin: eslesen.length===1 }; }
+  const aday = ilk[2] ? bul(`${on||"Müstakil"} ${ilk[1]}`) : bul(ilk[1]);
+  return { t: aday || bul("Diğer") || "", emin: eslesen.length===1 && (!ilk[2] || !!on) };
+}
+async function turEslestir(out){
+  out.textContent = "Dosyalar taranıyor…";
+  try{ await arsivYukle(true); }catch(x){ hata(x); return; }
+  const liste = S.turler; const say = {};
+  Object.values(tumDosyalar()).forEach(d => { if(d.tur && !liste.includes(d.tur)) say[d.tur] = (say[d.tur]||0)+1; });
+  const degerler = Object.keys(say).sort((a,b)=>a.localeCompare(b,"tr"));
+  if(!degerler.length){ out.innerHTML = `<p class="sub">Tüm dosyaların türü listede. Yapılacak bir şey yok.</p>`; return; }
+  out.innerHTML = `<div class="scroll"><table class="t"><thead><tr><th>Dosyalardaki tür</th><th class="n">Dosya</th><th>Yeni tür</th></tr></thead><tbody>
+    ${degerler.map((v,i) => { const o = turOner(v, liste); return `<tr><td>${esc(v)}${o.emin?"":` <span class="badge b-beklemede">Kontrol edin</span>`}</td><td class="n">${say[v]}</td>
+      <td><select data-te="${i}">${liste.map(t=>`<option ${t===o.t?"selected":""}>${esc(t)}</option>`).join("")}</select></td></tr>`; }).join("")}</tbody></table></div>
+    <p><button class="btn p" id="teuy">Uygula</button></p>`;
+  out.querySelector("#teuy").onclick = async () => {
+    const harita = {}; out.querySelectorAll("[data-te]").forEach(sl => harita[degerler[+sl.dataset.te]] = sl.value);
+    out.querySelector("#teuy").disabled = true;
+    const yamalar = Object.values(tumDosyalar()).filter(d => harita[d.tur]).map(d => [d, { tur:harita[d.tur] }]);
+    try{ for(let i=0;i<yamalar.length;i+=400){ const bt = writeBatch(db); yamalar.slice(i,i+400).forEach(([d,p]) => bt.update(doc(db,"dosyalar",d.id), p)); await bt.commit(); }
+      S.arsiv = null; toast(`${yamalar.length} dosyanın türü güncellendi`); out.innerHTML = `<p>${yamalar.length} dosyanın türü güncellendi.</p>`;
+    }catch(x){ hata(x); out.querySelector("#teuy").disabled = false; } };
 }
 async function hukukcuDuzenle(out){
   out.textContent = "Dosyalar taranıyor…";
