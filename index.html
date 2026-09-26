@@ -25,6 +25,7 @@
   -webkit-text-size-adjust:100%;
 }
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 body{margin:0;min-height:100vh;padding-bottom:env(safe-area-inset-bottom)}
 button,input,select,textarea{font:inherit;color:inherit}
 a{color:var(--ink2)}
@@ -673,7 +674,7 @@ function aramaParcalari(d){
     (t.birimler||[]).forEach(b => p.push([`Görüş cevabı (${b.kisa||b.ad})`, `${b.barkod||""} ${b.ad||""}`])); });
   gdfListe(d).forEach(g => p.push([`Görüş değerlendirme: ${GDF_AD(g)}`, g.sayi]));
   (d.sonucAdim||[]).forEach(x => p.push([`Nihai işlem: ${NIHAI[x.tip]||x.tip}`, x.sayi]));
-  if(d.cb) p.push(["Teklif yazısı", d.cb.sayi]);
+  if(d.cb) p.push(["Teklif yazısı", d.cb.sayi], ["Raportör", d.cb.raportor?.ad]);
   (d.adimlar||[]).forEach(a => p.push([`Süreç adımı: ${ADIM[a.tip]||ADIM_ESKI[a.tip]||a.tip}`, `${a.barkod||""} ${a.not||""} ${a.birim||""}`]));
   if(d.arsivOluru) p.push(["Arşiv oluru", `${d.arsivOluru.sayi||""} ${d.arsivOluru.not||""}`]);
   if(d.sonuc) p.push(["Sonuç", `${d.sonuc.rgSayi||""} ${d.sonuc.aciklama||""}`]);
@@ -722,6 +723,7 @@ async function vDosya(m, r){
     <dt>Sorumlu</dt><dd>${esc(d.sorumluAd||userName(d.atananEmail)||"Atanmadı")}</dd>
     <dt>Destek alınan hukukçu</dt><dd>${(d.destekHukukcular||[]).map(esc).join(", ")||"—"} ${ew?`<button class="btn sm" data-x="hukukcu">Düzenle</button>`:""}</dd>
     ${d.cb?.isaret?`<dt>Cumhurbaşkanlığı teklif yazısı</dt><dd>${tarih(d.cb.tarih)} – ${esc(d.cb.sayi)}</dd>`:""}
+    ${d.cb?.isaret && d.cb.raportor?.ad?`<dt>Raportör</dt><dd>${esc(d.cb.raportor.ad)}${d.cb.raportor.tel?` · ${esc(d.cb.raportor.tel)}`:""}${d.cb.raportor.not?`<br><span class="sub">${esc(d.cb.raportor.not)}</span>`:""}</dd>`:""}
     ${d.arsivNot && !d.arsivOluru?`<dt>Arşiv notu</dt><dd>${esc(d.arsivNot)}</dd>`:""}
     ${d.arsivOluru?`<dt>Arşiv oluru</dt><dd>${tarih(d.arsivOluru.tarih)} – ${esc(d.arsivOluru.sayi)}${d.arsivOluru.not?`<br>${esc(d.arsivOluru.not)}`:""}</dd>`:""}
     ${d.sonuc?.tur?`<dt>Sonuç</dt><dd>${esc(d.sonuc.tur)} (${tarih(d.sonuc.tarih)})${d.sonuc.rgSayi?` – ${esc(d.sonuc.rgSayi)}`:""}${d.sonuc.aciklama?`<br>${esc(d.sonuc.aciklama)}`:""}</dd>`:""}
@@ -754,7 +756,7 @@ async function vDosya(m, r){
 }
 function nihaiListe(d){
   const l = (d.sonucAdim||[]).map(x=>({ ...x, ad:NIHAI[x.tip] }));
-  if(d.cb?.isaret) l.push({ id:"cb", tip:"teklif", tarih:d.cb.tarih||"", sayi:d.cb.sayi||"", not:d.cb.not||"", ad:"Teklif yazısı ile Cumhurbaşkanlığına gönderildi" });
+  if(d.cb?.isaret) l.push({ id:"cb", tip:"teklif", tarih:d.cb.tarih||"", sayi:d.cb.sayi||"", not:[d.cb.not, d.cb.raportor?.ad ? `Raportör: ${d.cb.raportor.ad}${d.cb.raportor.tel?` (${d.cb.raportor.tel})`:""}` : ""].filter(Boolean).join("\n"), ad:"Teklif yazısı ile Cumhurbaşkanlığına gönderildi" });
   return l.sort((a,b)=>(a.tarih||"").localeCompare(b.tarih||"") || (NIHAI_SIRA[a.tip]||0)-(NIHAI_SIRA[b.tip]||0) || (a.zaman||"").localeCompare(b.zaman||""));
 }
 const ybBekliyor = d => d.kategori==="A1" && ["devam","beklemede"].includes(d.durum) && (d.sonucAdim||[]).some(x=>x.tip==="olur"||x.tip==="rg") && !(d.sonucAdim||[]).some(x=>NIHAI_SON.includes(x.tip));
@@ -773,8 +775,9 @@ function nihaiHtml(d, ew){
   }
   return `<div class="panel">
     ${bitti && ["devam","beklemede"].includes(d.durum) ? `<p style="margin-top:0;color:var(--onay)"><b>Dosya arşiv işlemleri için bekliyor.</b>${ew?" Arşiv oluru imzalandıktan sonra yukarıdaki \"Arşivle\" düğmesiyle arşive alabilirsiniz.":""}</p>` : ""}
-    ${l.length ? `<ul class="tl">${l.map(x=>`<li><b>${esc(x.ad)}</b> – ${tarih(x.tarih)||"tarih girilmedi"}${x.sayi?` – <span class="num">${esc(x.sayi)}</span>`:""}${x.not?`<br>${esc(x.not)}`:""}
+    ${l.length ? `<ul class="tl">${l.map(x=>`<li><b>${esc(x.ad)}</b> – ${tarih(x.tarih)||"tarih girilmedi"}${x.sayi?` – <span class="num">${esc(x.sayi)}</span>`:""}${x.not?`<br>${esc(x.not).replace(/\n/g,"<br>")}`:""}
       ${x.tip==="teklif" && !x.sayi && ew ? ` <button class="btn sm" data-x="cb">Tarih ve sayıyı gir</button>` : ""}
+      ${x.tip==="teklif" && ew ? ` <button class="btn sm" data-x="raportor">${d.cb?.raportor?.ad?"Raportörü değiştir":"Raportör bilgisi gir"}</button>` : ""}
       ${ew ? ` <button class="btn sm" data-x="${x.tip==="teklif"?"cb":"nihaiduz"}" data-id="${x.id}">Düzelt</button> <button class="btn sm danger" data-x="nihaisil" data-id="${x.id}">Sil</button>` : ""}</li>`).join("")}</ul>` : `<p class="sub" style="margin-top:0">Henüz nihai işlem yok.</p>`}
     ${btn.length?`<div class="row" style="margin-top:10px">${btn.join("")}</div>`:""}</div>`;
 }
@@ -993,6 +996,26 @@ const DX = {
     const x = (d.sonucAdim||[]).find(y=>y.id===ds.id); if(!x || !confirm(`"${NIHAI[x.tip]} – ${tarih(x.tarih)}" kaydı silinsin mi?`)) return;
     const kalan = d.sonucAdim.filter(y=>y.id!==ds.id);
     try{ await dosyaGuncelle(d, { sonucAdim:kalan, arsivBekliyor: kalan.some(y=>NIHAI_SON.includes(y.tip)) }, `Nihai işlem kaydı silindi: ${NIHAI[x.tip]} (${tarih(x.tarih)})`); }catch(e){ hata(e); }
+  },
+  async raportor(d){
+    let rehber = [];
+    try{ const q = await getDocs(query(collection(db,"ekKayitlar"), where("listeId","==","rehber")));
+      q.forEach(x => { const v = x.data().degerler||{}; if(v["Ad soyad"]) rehber.push({ ad:v["Ad soyad"], tel:v["Telefon"]||"", kurum:v["Kurum"]||"", unvan:v["Unvan"]||"" }); }); }catch(e){}
+    const oncelik = r => /raportör/i.test(r.unvan+r.kurum) || /Cumhurbaşkanlığı/i.test(r.kurum) ? 0 : 1;
+    rehber.sort((a,b)=>oncelik(a)-oncelik(b) || a.ad.localeCompare(b.ad,"tr"));
+    const r = d.cb?.raportor || {};
+    const m = modal(`<h2>Raportör bilgisi</h2><p class="sub">Taslağın Cumhurbaşkanlığında hangi raportörde olduğu.</p><form>
+      <label class="f"><span>Raportör</span><input type="text" name="ad" list="rpl" value="${esc(r.ad||"")}" autocomplete="off"><datalist id="rpl">${rehber.map(x=>`<option value="${esc(x.ad)}">${esc([x.unvan,x.kurum].filter(Boolean).join(" – "))}</option>`).join("")}</datalist>
+        <div class="hint">Rehberden seçebilir ya da yazabilirsiniz.</div></label>
+      <label class="f"><span>Telefon</span><input type="text" name="tel" value="${esc(r.tel||"")}"></label>
+      <label class="f"><span>Not (isteğe bağlı)</span><textarea name="not" style="min-height:44px">${esc(r.not||"")}</textarea></label></form>
+      <div class="foot">${r.ad?`<button class="btn danger" data-sil>Raportör bilgisini kaldır</button><span class="sp"></span>`:""}<button class="btn" data-k>Vazgeç</button><button class="btn p" data-ok>Kaydet</button></div>`);
+    const adI = m.querySelector("input[name=ad]"), telI = m.querySelector("input[name=tel]");
+    adI.oninput = () => { const x = rehber.find(y=>y.ad===adI.value); if(x && !telI.value) telI.value = x.tel; };
+    m.querySelector("[data-k]").onclick = kapat;
+    const sil = m.querySelector("[data-sil]"); if(sil) sil.onclick = async () => { try{ await dosyaGuncelle(d, { cb:{ ...d.cb, raportor:null } }, "Raportör bilgisi kaldırıldı"); kapat(); }catch(x){ hata(x); } };
+    m.querySelector("[data-ok]").onclick = async () => { const v = fd(m); if(!v.ad.trim()) return toast("Raportörün adını yazın.");
+      try{ await dosyaGuncelle(d, { cb:{ ...d.cb, raportor:{ ad:v.ad.trim(), tel:v.tel.trim(), not:v.not.trim() } } }, `Raportör: ${v.ad.trim()}`); kapat(); }catch(x){ hata(x); } };
   },
   gdfekle(d, ds){
     const bas = { istem:"Görüş değerlendirme istemi gönder", form:"Görüş değerlendirme formu geldi", iade:"Görüş değerlendirme formu iade edildi" }[ds.tip];
@@ -1357,11 +1380,17 @@ async function vListeler(m, r, tek){
   const yaz = !aktif.salt || isYon();
   const ciz_ = ara => { const a = norm(ara); const l = a ? kayit.filter(k=>norm(Object.values(k.degerler||{}).join(" ")).includes(a)) : kayit;
     return `<div class="scroll"><table class="t"><thead><tr>${aktif.sutunlar.map(s=>`<th>${esc(s)}</th>`).join("")}${yaz?"<th></th>":""}</tr></thead><tbody>
-    ${l.map(k=>`<tr>${aktif.sutunlar.map(s=>`<td>${esc(k.degerler?.[s]??"").replace(/\n/g,"<br>")}</td>`).join("")}${yaz?`<td><button class="btn sm" data-ek="${k.id}">Düzenle</button></td>`:""}</tr>`).join("") || `<tr><td colspan="${aktif.sutunlar.length+1}" class="sub">Kayıt yok.</td></tr>`}</tbody></table></div>`; };
+    ${l.map((k,i)=>`<tr>${aktif.sutunlar.map(s=>`<td>${esc(k.degerler?.[s]??"").replace(/\n/g,"<br>")}</td>`).join("")}${yaz?`<td style="white-space:nowrap">${a?"":`<button class="btn sm" data-yer="${i}" data-yon="-1" title="Yukarı taşı" ${i===0?"disabled":""}>↑</button> <button class="btn sm" data-yer="${i}" data-yon="1" title="Aşağı taşı" ${i===l.length-1?"disabled":""}>↓</button> `}<button class="btn sm" data-ek="${k.id}">Düzenle</button></td>`:""}</tr>`).join("") || `<tr><td colspan="${aktif.sutunlar.length+1}" class="sub">Kayıt yok.</td></tr>`}</tbody></table></div>`; };
   m.innerHTML = ust + `
     ${aktif.salt?`<p class="hint">Eski kayıt arşivi. ${isYon()?"Sadece yöneticiler düzenleyebilir.":"Salt okunur."}</p>`:""}
     <div class="row" style="margin-bottom:10px"><input type="search" id="la" placeholder="Bu listede ara" style="flex:1;max-width:380px">${yaz?`<button class="btn p" id="lyeni">Kayıt ekle</button>`:""}</div><div id="lt">${ciz_("")}</div>`;
-  const bagla = () => m.querySelectorAll("[data-ek]").forEach(b => b.onclick = () => ekKayitModal(aktif, kayit.find(k=>k.id===b.dataset.ek)));
+  const bagla = () => { m.querySelectorAll("[data-ek]").forEach(b => b.onclick = () => ekKayitModal(aktif, kayit.find(k=>k.id===b.dataset.ek)));
+    m.querySelectorAll("[data-yer]").forEach(b => b.onclick = async () => {
+      const i = +b.dataset.yer, j = i + (+b.dataset.yon); if(j<0 || j>=kayit.length) return;
+      [kayit[i], kayit[j]] = [kayit[j], kayit[i]];
+      const bt = writeBatch(db); kayit.forEach((k,n) => { if(k.sira !== n+1){ k.sira = n+1; bt.update(doc(db,"ekKayitlar",k.id), { sira:n+1 }); } });
+      m.querySelector("#lt").innerHTML = ciz_(""); bagla();
+      try{ await bt.commit(); }catch(x){ hata(x); } }); };
   m.querySelector("#la").oninput = e => { m.querySelector("#lt").innerHTML = ciz_(e.target.value); bagla(); }; bagla();
   const yb = m.querySelector("#lyeni"); if(yb) yb.onclick = () => ekKayitModal(aktif, null, kayit.length);
 }
