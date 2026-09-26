@@ -176,6 +176,8 @@ const SONUC_AD = { "+":"Öneri var", "-":"Öneri yok", "0":"Cevap vermedi", "?":
 const SONUC_ISARET = { "+":"+", "-":"−", "0":"∅", "?":"✓" };
 const ROL = { atayan:"Atayan", uzman:"Uzman Yardımcısı", yonetici:"Yönetici", kurucu:"Sistem sahibi" };
 const SONUC = ["Yürürlüğe girdi","Görüş bildirildi","İade edildi","Geri çekildi","Diğer"];
+const NIHAI = { olurh:"Bakan Oluru hazırlandı", olur:"Bakan Oluru imzalandı", rg:"Resmî Gazete'de yayımlandı", yb:"Mevzuat yürürlük bildirimi yapıldı", tiade:"Taslak iade edildi", geri:"Taslak geri çekildi" };
+const NIHAI_SON = ["yb","tiade","geri"];
 const ADIM_ESKI = { istem:"Görüş değerlendirme istemi gönderildi", form:"Görüş değerlendirme formu geldi", iade:"Görüş değerlendirme formu iade edildi" };
 const ADIM = {
   kontrol:"Son kontrole gönderildi",
@@ -246,6 +248,7 @@ function olaylar(d){
   const ev = [{tip:"acilis", tarih:d.gelisTarihi||"", sira:0}];
   (d.turlar||[]).forEach((t,i)=>ev.push({tip:"tur", tarih:t.tarih||"", tur:t, sira:1000+i, id:t.id}));
   (d.adimlar||[]).forEach((a,i)=>ev.push({tip:a.tip, tarih:a.tarih||"", adim:a, sira:2000+i, id:a.id}));
+  (d.sonucAdim||[]).forEach((x,i)=>ev.push({tip:x.tip, tarih:x.tarih||"", adim:{ birim:d.birimAd, barkod:x.sayi, sayi:x.sayi }, sira:2500+i, id:x.id}));
   (d.gdf||[]).forEach((g,i)=>ev.push({tip:g.tip, tarih:g.tarih||"", adim:{ birim:d.birimAd, barkod:g.sayi }, sira:1500+i, id:g.id}));
   if(d.cb?.isaret) ev.push({tip:"cb", tarih:d.cb.tarih||"", sira:3000});
   ev.sort((a,b)=> (a.tarih||"").localeCompare(b.tarih||"") || a.sira-b.sira);
@@ -285,6 +288,12 @@ function olayMetni(d, e){
     case "iade": return { a:`Görüş değerlendirme formu ${t} tarihinde ${yonelme(e.adim.birim||d.birimAd)} iade edildi.`, b:"Görüş değerlendirme formunun revize edilerek Genel Müdürlüğümüze gönderilmesi bekleniyor." };
     case "kontrol": return { a:`Nihai taslak ${t} tarihinde son kontrol için ${yonelme(e.adim.birim||d.birimAd)} gönderildi.`, b:"Son kontrol neticesi bekleniyor." };
     case "raportor": return { a:`Raportör dönüşü (${t}): ${e.adim.not||""}`.trim(), b:"" };
+    case "olurh": return { a:`Bakan Oluru ${t} tarihinde hazırlanarak imzaya sunuldu.`, b:"Bakan Olurunun imzalanması bekleniyor." };
+    case "olur": return { a:`Bakan Oluru ${t} tarih ve ${e.adim.sayi||"…"} sayı ile imzalandı.`, b:"Mevzuat yürürlük bildirimi yapılacak." };
+    case "rg": return { a:`${t} tarihli ve ${e.adim.sayi||"…"} sayılı Resmî Gazete'de yayımlandı.`, b:"Mevzuat yürürlük bildirimi yapılacak." };
+    case "yb": return { a:`Mevzuat yürürlük bildirimi ${t} tarihinde yapıldı.`, b:"Arşiv işlemleri bekleniyor." };
+    case "tiade": return { a:`Taslak ${t} tarihinde ${yonelme(d.birimAd)} iade edildi.`, b:"Arşiv işlemleri bekleniyor." };
+    case "geri": return { a:`Taslak ${t} tarihinde geri çekildi.`, b:"Arşiv işlemleri bekleniyor." };
     case "cb": return { a:`${t} tarihli ve ${d.cb?.sayi||"…"} sayılı yazı ile Cumhurbaşkanlığına gönderildi.`, b:"Raportör incelemesinde." };
   }
   return { a:"", b:"" };
@@ -464,7 +473,8 @@ function durumRozet(d){
   let s = `<span class="badge b-${d.durum}">${esc(DURUM[d.durum]||d.durum)}</span>`;
   if(d.cb?.isaret) s += ` <span class="badge b-cb">Cumhurbaşkanlığında</span>`;
   const g = gecikme(d); if(g.var) s += ` <span class="badge b-gec">Gecikme</span>`;
-  if(d.durum!=="arsiv" && gdfDurum(d)?.bekleniyor) s += ` <span class="badge b-onay_uzman">Form bekleniyor</span>`;
+  if(d.arsivBekliyor && ["devam","beklemede"].includes(d.durum)) s += ` <span class="badge b-onay_uzman">Arşiv işlemleri bekliyor</span>`;
+  if(d.kategori==="A1" && d.durum!=="arsiv" && gdfDurum(d)?.bekleniyor) s += ` <span class="badge b-onay_uzman">Form bekleniyor</span>`;
   if(d.raporGizle && d.kategori==="A1") s += ` <span class="badge b-gizli">Raporda gizli</span>`;
   if(d.eskiKayit) s += ` <span class="badge b-gizli">Eski kayıt</span>`;
   return s;
@@ -502,6 +512,7 @@ function vPano(m, r){
   dl.forEach(d => {
     if(d.durum==="onay_uzman" && d.atananEmail===S.email) benim.push([d,"Tamamlandı onayınızı bekliyor"]);
     if(d.durum==="onay_yonetici" && isYon()) benim.push([d,"Arşiv onayınızı bekliyor"]);
+    if(d.arsivBekliyor && ["devam","beklemede"].includes(d.durum) && (isMgr() || d.atananEmail===S.email)) benim.push([d,"Dosya arşiv işlemleri için bekliyor"]);
     if(d.atananEmail===S.email && d.durum!=="onay_uzman"){ const g=gecikme(d); if(g.bugunSon && !g.gec) benim.push([d,`${g.bugunSon} birim için bugün son gün`]); }
   });
   const gecList = dl.filter(d=>gecikme(d).var).sort((a,b)=>gecikmeDetay(b).length-gecikmeDetay(a).length);
@@ -568,7 +579,7 @@ async function vDosyalar(m, r, benim){
   if(k) l = l.filter(x=>x.kategori===k);
   if(p) l = l.filter(x=>x.atananEmail===p);
   const df = { aktif:x=>x.durum!=="arsiv", devam:x=>x.durum==="devam", beklemede:x=>x.durum==="beklemede", cb:x=>x.cb?.isaret && x.durum!=="arsiv",
-    onay:x=>x.durum.startsWith("onay"), gec:x=>gecikme(x).var, form:x=>x.durum!=="arsiv" && !!gdfDurum(x)?.bekleniyor, arsiv:x=>x.durum==="arsiv", hepsi:()=>true }[d] || (()=>true);
+    onay:x=>x.durum.startsWith("onay"), gec:x=>gecikme(x).var, form:x=>x.kategori==="A1" && x.durum!=="arsiv" && !!gdfDurum(x)?.bekleniyor, arsiv:x=>x.durum==="arsiv", hepsi:()=>true }[d] || (()=>true);
   l = l.filter(df);
   if(ara){ const a = norm(ara); l = l.filter(x => norm([x.ad,x.dosyaNo,x.birimAd,x.sorumluAd,(x.destekHukukcular||[]).join(" "),x.gelisBarkod,x.eskiBilgi].join(" ")).includes(a)); }
   sirala(l);
@@ -578,7 +589,7 @@ async function vDosyalar(m, r, benim){
   m.innerHTML = `<h1>${esc(baslik)}</h1><p class="sub">${l.length} dosya</p>
     <div class="tabs">${[["","Tümü"],...Object.entries(KATS)].map(([kk,t])=>`<a href="${link({k:kk})}" class="${k===kk?"on":""}">${kk?`<span class="kat k-${kk}">${kk}</span> `:""}${esc(t)}</a>`).join("")}</div>
     <div class="filters"><input type="search" id="fq" placeholder="Ad, dosya no, birim, barkod ara" value="${esc(ara)}">
-      <select id="fd">${[["aktif","Tüm aktif dosyalar"],["devam","Devam ediyor"],["beklemede","Beklemede"],["cb","Cumhurbaşkanlığında"],["onay","Onay bekliyor"],["gec","Gecikmesi olan"],["form","Görüş değerlendirme formu bekleniyor"],["arsiv","Arşiv"],["hepsi","Aktif + arşiv"]].map(([v,t])=>`<option value="${v}" ${v===d?"selected":""}>${t}</option>`).join("")}</select>
+      <select id="fd">${[["aktif","Tüm aktif dosyalar"],["devam","Devam ediyor"],["beklemede","Beklemede"],["cb","Cumhurbaşkanlığında"],["onay","Onay bekliyor"],["gec","Gecikmesi olan"],["form","Görüş değerlendirme formu bekleniyor (A1)"],["arsiv","Arşiv"],["hepsi","Aktif + arşiv"]].map(([v,t])=>`<option value="${v}" ${v===d?"selected":""}>${t}</option>`).join("")}</select>
       ${kisiSec || "<span></span>"}</div>
     ${l.length ? `<div class="list">${l.slice(0,300).map(satir).join("")}</div>${l.length>300?`<p class="sub">İlk 300 dosya gösteriliyor, aramayı daraltın.</p>`:""}`
       : `<div class="empty">Bu ölçütlere uyan dosya yok.${isMgr()?` <a href="#/yeni">Yeni dosya açın</a>.`:""}</div>`}`;
@@ -603,7 +614,7 @@ async function vDosya(m, r){
   if(d.durum==="onay_uzman" && (d.atananEmail===S.email || isYon())) eylem.push(`<button class="btn p" data-x="uonay">Onayla</button>`,`<button class="btn danger" data-x="uret">Reddet</button>`);
   if(d.durum==="onay_yonetici" && isYon()) eylem.push(`<button class="btn p" data-x="yonay">Onayla, arşive al</button>`,`<button class="btn danger" data-x="yret">Reddet</button>`);
   if(d.durum==="arsiv" && isYon()) eylem.push(`<button class="btn" data-x="arsivcik">Arşivden çıkar</button>`);
-  if(ew && d.durum!=="arsiv") eylem.push(`<button class="btn" data-x="cb">${d.cb?.isaret?(d.cb.sayi?"Cumhurbaşkanlığı işaretini kaldır":"Teklif yazısı bilgilerini gir"):"Cumhurbaşkanlığına gönderildi"}</button>`);
+  if(ew && d.durum!=="arsiv" && d.kategori!=="A1") eylem.push(`<button class="btn" data-x="cb">${d.cb?.isaret?(d.cb.sayi?"Cumhurbaşkanlığı işaretini kaldır":"Teklif yazısı bilgilerini gir"):"Cumhurbaşkanlığına gönderildi"}</button>`);
   if(isMgr() && d.kategori==="A1" && d.durum!=="arsiv") eylem.push(`<button class="btn" data-x="gizle">${d.raporGizle?"Haftalık raporda göster":"Haftalık raporda yer verme"}</button>`);
   const onayBilgi = d.onay?.tamamlayan ? `<p class="sub">Tamamlandı olarak işaretleyen: ${esc(d.onay.tamamlayan)} (${tarih(d.onay.tamamlamaZamani)})${d.onay.uzmanOnay?` · Uzman yrd. onayı: ${esc(d.onay.uzmanOnay)}`:""}${d.onay.yonetici?` · Yönetici onayı: ${esc(d.onay.yonetici)}`:""}${d.onay.ret?` · Son ret: ${esc(d.onay.ret)}`:""}</p>` : "";
   m.innerHTML = `
@@ -636,8 +647,8 @@ async function vDosya(m, r){
   ${(d.turlar||[]).length ? d.turlar.map(t=>turHtml(d,t,ew)).join("") : `<div class="empty">Henüz görüşe açılmadı.</div>`}
   ${ew?`<p><button class="btn p" data-x="turekle">Görüşe aç</button></p>`:""}
 
-  <h2>Görüş değerlendirme formu</h2>
-  ${gdfHtml(d, ew)}
+  ${d.kategori==="A1" ? `<h2>Nihai işlemler</h2>${nihaiHtml(d, ew)}` : ""}
+  ${d.kategori==="A1" ? `<h2>Görüş değerlendirme formu</h2>${gdfHtml(d, ew)}` : (gdfListe(d).length ? `<h2>Görüş değerlendirme formu</h2>${gdfHtml(d, false)}<p class="hint">Görüş değerlendirme formu sadece A1 dosyalarında kullanılır. Bu kayıtlar dosyanın kategorisi değişmeden önce girilmiş.</p>` : "")}
 
   <h2>Süreç adımları</h2>
   <p class="hint" style="margin-top:-6px">Son kontrol ve raportör dönüşü gibi aşamayı değiştiren diğer yazılar. Haftalık rapordaki açıklamalar görüş turları, görüş değerlendirme formu ve bu adımlardan oluşur.</p>
@@ -649,6 +660,31 @@ async function vDosya(m, r){
   <h2>Geçmiş</h2>
   ${(d.gecmis||[]).length ? `<ul class="tl">${[...d.gecmis].reverse().map(g=>`<li>${esc(g.olay)}<br><small>${esc(g.kim)} · ${new Date(g.zaman).toLocaleString("tr-TR")}</small></li>`).join("")}</ul>` : `<p class="sub">Kayıt yok.</p>`}`;
   m.querySelectorAll("[data-x]").forEach(el => el.onclick = () => DX[el.dataset.x](d, el.dataset));
+}
+function nihaiListe(d){
+  const l = (d.sonucAdim||[]).map(x=>({ ...x, ad:NIHAI[x.tip] }));
+  if(d.cb?.isaret) l.push({ id:"cb", tip:"teklif", tarih:d.cb.tarih||"", sayi:d.cb.sayi||"", ad:"Teklif yazısı ile Cumhurbaşkanlığına gönderildi" });
+  return l.sort((a,b)=>(a.tarih||"").localeCompare(b.tarih||""));
+}
+const nihaiBitti = d => (d.sonucAdim||[]).some(x=>NIHAI_SON.includes(x.tip));
+function nihaiHtml(d, ew){
+  const l = nihaiListe(d), bitti = nihaiBitti(d), var_ = t => (d.sonucAdim||[]).some(x=>x.tip===t);
+  const olurYolu = var_("olurh") || var_("olur"), teklifYolu = !!d.cb?.isaret;
+  const yururlukte = var_("olur") || var_("rg");
+  const btn = [];
+  if(ew && !bitti){
+    if(!olurYolu && !teklifYolu) btn.push(`<button class="btn" data-x="nihai" data-tip="olurh">Bakan Oluru hazırlandı</button>`, `<button class="btn" data-x="cb">Teklif yazısı gönderildi</button>`);
+    if(olurYolu && !var_("olur")) btn.push(`<button class="btn p" data-x="nihai" data-tip="olur">Bakan Oluru imzalandı</button>`);
+    if(teklifYolu && !var_("rg")) btn.push(`<button class="btn p" data-x="nihai" data-tip="rg">Resmî Gazete'de yayımlandı</button>`);
+    if(yururlukte) btn.push(`<button class="btn p" data-x="nihai" data-tip="yb">Mevzuat yürürlük bildirimi yapıldı</button>`);
+    btn.push(`<button class="btn" data-x="nihai" data-tip="tiade">İade edildi</button>`, `<button class="btn" data-x="nihai" data-tip="geri">Geri çekildi</button>`);
+  }
+  return `<div class="panel">
+    ${bitti && ["devam","beklemede"].includes(d.durum) ? `<p style="margin-top:0;color:var(--onay)"><b>Dosya arşiv işlemleri için bekliyor.</b>${isMgr()?" Kontrol edip yukarıdan \"Tamamlandı\" diyebilirsiniz.":""}</p>` : ""}
+    ${l.length ? `<ul class="tl">${l.map(x=>`<li><b>${esc(x.ad)}</b> – ${tarih(x.tarih)||"tarih girilmedi"}${x.sayi?` – <span class="num">${esc(x.sayi)}</span>`:""}
+      ${x.tip==="teklif" && !x.sayi && ew ? ` <button class="btn sm" data-x="cb">Tarih ve sayıyı gir</button>` : ""}
+      ${ew ? ` <button class="btn sm danger" data-x="nihaisil" data-id="${x.id}">Sil</button>` : ""}</li>`).join("")}</ul>` : `<p class="sub" style="margin-top:0">Henüz nihai işlem yok.</p>`}
+    ${btn.length?`<div class="row" style="margin-top:10px">${btn.join("")}</div>`:""}</div>`;
 }
 function gdfHtml(d, ew){
   const l = gdfListe(d), du = gdfDurum(d); const son = l[l.length-1];
@@ -697,10 +733,14 @@ const DX = {
   },
   async devamet(d){ try{ await dosyaGuncelle(d, { durum:"devam", beklemeGerekce:"" }, "Beklemeden çıkarıldı"); }catch(x){ hata(x); } },
   tamamla(d){
-    const m = modal(`<h2>Tamamlandı olarak işaretle</h2><p class="sub">Dosya önce uzman yardımcısının, sonra yöneticilerden birinin onayına gider.</p>
-      <form><label class="f"><span>Sonuç</span><select name="tur" required>${SONUC.map(s=>`<option>${s}</option>`).join("")}</select></label>
-      <label class="f"><span>Sonuç tarihi</span><input type="date" name="tarih" value="${bugun()}" required></label>
-      <label class="f"><span>RG sayısı ya da olur barkodu</span><input type="text" name="rg" placeholder="Yürürlüğe girdiyse doldurun"></label></form>
+    const sa = d.sonucAdim||[], son = [...sa].reverse().find(x=>NIHAI_SON.includes(x.tip));
+    const rg = sa.find(x=>x.tip==="rg"), olur = sa.find(x=>x.tip==="olur");
+    const on = !son ? { tur:SONUC[0], tarih:bugun(), rg:"" } : son.tip==="tiade" ? { tur:"İade edildi", tarih:son.tarih, rg:"" } : son.tip==="geri" ? { tur:"Geri çekildi", tarih:son.tarih, rg:"" }
+      : { tur:"Yürürlüğe girdi", tarih:(rg||olur||son).tarih, rg: rg ? `RG ${tarih(rg.tarih)} / ${rg.sayi}` : olur ? `Olur ${tarih(olur.tarih)} / ${olur.sayi}` : "" };
+    const m = modal(`<h2>Tamamlandı olarak işaretle</h2><p class="sub">Dosya önce uzman yardımcısının, sonra yöneticilerden birinin onayına gider.${son?" Sonuç bilgileri nihai işlemlerden dolduruldu.":""}</p>
+      <form><label class="f"><span>Sonuç</span><select name="tur" required>${SONUC.map(s=>`<option ${s===on.tur?"selected":""}>${s}</option>`).join("")}</select></label>
+      <label class="f"><span>Sonuç tarihi</span><input type="date" name="tarih" value="${esc(on.tarih)}" required></label>
+      <label class="f"><span>RG sayısı ya da olur barkodu</span><input type="text" name="rg" value="${esc(on.rg)}" placeholder="Yürürlüğe girdiyse doldurun"></label></form>
       <div class="foot"><button class="btn" data-k>Vazgeç</button><button class="btn p" data-ok>Tamamlandı</button></div>`);
     m.querySelector("[data-k]").onclick=kapat;
     m.querySelector("[data-ok]").onclick = async () => { const v = fd(m);
@@ -789,6 +829,29 @@ const DX = {
       if(v.tip==="raportor" && !v.not?.trim()) return toast("Raportör dönüşünün açıklamasını yazın.");
       const a = { id:uid(), tip:v.tip, tarih:v.tarih, barkod:(v.barkod||"").trim(), birim:["form","raportor"].includes(v.tip)?"":(v.birim||"").trim(), not:(v.not||"").trim(), ekleyen:myName(), zaman:simdi() };
       try{ await dosyaGuncelle(d, { adimlar:[...(d.adimlar||[]), a] }, `Adım eklendi: ${ADIM[v.tip]} (${tarih(v.tarih)})`); kapat(); }catch(x){ hata(x); } };
+  },
+  nihai(d, ds){
+    const bas = NIHAI[ds.tip];
+    const etiket = { rg:["Resmî Gazete tarihi","Resmî Gazete sayısı"], olur:["Olur tarihi","Olur sayısı"], olurh:["Hazırlandığı tarih",""] }[ds.tip] || ["Tarih","Yazının sayısı / barkodu"];
+    const m = modal(`<h2>${bas}</h2><form><div class="grid2"><label class="f"><span>${etiket[0]}</span><input type="date" name="t" value="${bugun()}" required></label>
+      ${etiket[1]?`<label class="f"><span>${etiket[1]}</span><input type="text" name="s"></label>`:`<input type="hidden" name="s" value="">`}</div></form>
+      ${NIHAI_SON.includes(ds.tip)?`<p class="hint">Kaydedince yöneticilere, Atayan'a ve dosyanın uzman yardımcısına "Dosya arşiv işlemleri için bekliyor" bildirimi gider.</p>`:""}
+      <div class="foot"><button class="btn" data-k>Vazgeç</button><button class="btn p" data-ok>Kaydet</button></div>`);
+    m.querySelector("[data-k]").onclick = kapat;
+    m.querySelector("[data-ok]").onclick = async () => { const v = fd(m); if(!v.t) return toast("Tarih gerekli.");
+      if(ds.tip!=="olurh" && !v.s.trim() && !confirm("Sayı girmeden kaydedilsin mi?")) return;
+      const x = { id:uid(), tip:ds.tip, tarih:v.t, sayi:v.s.trim(), ekleyen:myName(), zaman:simdi() };
+      const son = NIHAI_SON.includes(ds.tip);
+      try{ await dosyaGuncelle(d, { sonucAdim:[...(d.sonucAdim||[]), x], ...(son?{ arsivBekliyor:true }:{}) }, `${bas} (${tarih(v.t)}${v.s.trim()?", "+v.s.trim():""})`);
+        if(son) await bildir([...yoneticiler(), ...aktifKullanicilar("atayan").map(u=>u.email), d.atananEmail], "Dosya arşiv işlemleri için bekliyor", `${d.dosyaNo} – ${d.ad}\n${bas} (${tarih(v.t)})`, d.id);
+        kapat(); }catch(e){ hata(e); } };
+  },
+  async nihaisil(d, ds){
+    if(ds.id==="cb"){ if(!confirm("Teklif yazısı kaydı (Cumhurbaşkanlığı işareti) kaldırılsın mı?")) return;
+      return dosyaGuncelle(d, { cb:{ ...d.cb, isaret:false } }, "Teklif yazısı kaydı kaldırıldı").catch(hata); }
+    const x = (d.sonucAdim||[]).find(y=>y.id===ds.id); if(!x || !confirm(`"${NIHAI[x.tip]} – ${tarih(x.tarih)}" kaydı silinsin mi?`)) return;
+    const kalan = d.sonucAdim.filter(y=>y.id!==ds.id);
+    try{ await dosyaGuncelle(d, { sonucAdim:kalan, arsivBekliyor: kalan.some(y=>NIHAI_SON.includes(y.tip)) }, `Nihai işlem kaydı silindi: ${NIHAI[x.tip]} (${tarih(x.tarih)})`); }catch(e){ hata(e); }
   },
   gdfekle(d, ds){
     const bas = { istem:"Görüş değerlendirme istemi gönder", form:"Görüş değerlendirme formu geldi", iade:"Görüş değerlendirme formu iade edildi" }[ds.tip];
