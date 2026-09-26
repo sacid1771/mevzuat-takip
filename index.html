@@ -169,6 +169,8 @@ const db = getFirestore(fb);
 /* ---------- sabitler ---------- */
 const KATS = { A1:"Bakanlık Taslakları", A2:"A2 Taslaklar", B:"Dış Görüşler", C:"Diğer Yazılar" };
 const DURUM = { devam:"Devam ediyor", beklemede:"Beklemede", onay_uzman:"Onay bekliyor (uzman yrd.)", onay_yonetici:"Onay bekliyor (yönetici)", arsiv:"Arşiv" };
+const SONUC_AD = { "+":"Öneri var", "-":"Öneri yok", "0":"Cevap vermedi", "?":"Cevap geldi" };
+const SONUC_ISARET = { "+":"+", "-":"−", "0":"∅", "?":"✓" };
 const ROL = { atayan:"Atayan", uzman:"Uzman Yardımcısı", yonetici:"Yönetici", kurucu:"Sistem sahibi" };
 const SONUC = ["Yürürlüğe girdi","Görüş bildirildi","İade edildi","Geri çekildi","Diğer"];
 const ADIM = {
@@ -192,7 +194,7 @@ const bugun = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.g
 const tarih = s => { if(!s) return ""; const m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? `${+m[3]}.${+m[2]}.${m[1]}` : String(s); };
 const simdi = () => new Date().toISOString();
 const uid = () => Math.random().toString(36).slice(2,10);
-const norm = s => String(s||"").toLocaleUpperCase("tr").replace(/^AV\.?\s*/,"").replace(/\s+/g," ").trim();
+const norm = s => String(s||"").toLocaleUpperCase("tr").replace(/Î/g,"I").replace(/Â/g,"A").replace(/Û/g,"U").replace(/^AV(\.\s*|\s+)/,"").replace(/\s+/g," ").trim();
 const myName = () => S.me?.ad || S.user?.displayName || S.email;
 const userName = e => (e && S.users[e]?.ad) || e || "";
 const isOwner = () => S.email === OWNER;
@@ -554,7 +556,7 @@ async function vDosya(m, r){
   if(d.durum==="onay_uzman" && (d.atananEmail===S.email || isYon())) eylem.push(`<button class="btn p" data-x="uonay">Onayla</button>`,`<button class="btn danger" data-x="uret">Reddet</button>`);
   if(d.durum==="onay_yonetici" && isYon()) eylem.push(`<button class="btn p" data-x="yonay">Onayla, arşive al</button>`,`<button class="btn danger" data-x="yret">Reddet</button>`);
   if(d.durum==="arsiv" && isYon()) eylem.push(`<button class="btn" data-x="arsivcik">Arşivden çıkar</button>`);
-  if(ew && d.durum!=="arsiv") eylem.push(`<button class="btn" data-x="cb">${d.cb?.isaret?"Cumhurbaşkanlığı işaretini kaldır":"Cumhurbaşkanlığına gönderildi"}</button>`);
+  if(ew && d.durum!=="arsiv") eylem.push(`<button class="btn" data-x="cb">${d.cb?.isaret?(d.cb.sayi?"Cumhurbaşkanlığı işaretini kaldır":"Teklif yazısı bilgilerini gir"):"Cumhurbaşkanlığına gönderildi"}</button>`);
   if(isMgr() && d.kategori==="A1" && d.durum!=="arsiv") eylem.push(`<button class="btn" data-x="gizle">${d.raporGizle?"Haftalık raporda göster":"Haftalık raporda yer verme"}</button>`);
   const onayBilgi = d.onay?.tamamlayan ? `<p class="sub">Tamamlandı olarak işaretleyen: ${esc(d.onay.tamamlayan)} (${tarih(d.onay.tamamlamaZamani)})${d.onay.uzmanOnay?` · Uzman yrd. onayı: ${esc(d.onay.uzmanOnay)}`:""}${d.onay.yonetici?` · Yönetici onayı: ${esc(d.onay.yonetici)}`:""}${d.onay.ret?` · Son ret: ${esc(d.onay.ret)}`:""}</p>` : "";
   m.innerHTML = `
@@ -602,11 +604,11 @@ function turHtml(d,t,ew){
   const bg = bugun();
   const cev = (t.birimler||[]).filter(b=>b.sonuc).length, top=(t.birimler||[]).length;
   return `<div class="tur"><div class="th"><b>${t.tip==="dis"?"Dış görüş":"İç görüş"}</b>
-    <span>${tarih(t.tarih)}</span><span class="num">Yazı: ${esc(t.barkod||"—")}</span><span>Son tarih: <b>${tarih(t.sonTarih)||"—"}</b></span>
+    <span>${t.aktarildi?"Eski kayıttan":tarih(t.tarih)}</span><span class="num">Yazı: ${esc(t.barkod||"—")}</span><span>Son tarih: <b>${tarih(t.sonTarih)||"—"}</b></span>
     <span>${cev}/${top} cevap</span><span class="sp"></span>${ew?`<button class="btn sm" data-x="turbirim" data-id="${t.id}">Yer ekle</button>`:""}</div>
     <div class="cev">${(t.birimler||[]).map((b,i)=>{ const son = etkinSon(t,b); const gec = !b.sonuc && son && son<bg;
-      return `<div class="cb"><span class="mark ${b.sonuc==="+"?"plus":b.sonuc==="-"?"minus":gec?"late":""}">${b.sonuc||"?"}</span>
-      <span class="nm">${esc(b.kisa?`${b.kisa}`:b.ad)}<small>${b.kisa?esc(b.ad)+" · ":""}${b.sonuc?`${b.sonuc==="+"?"Öneri var":"Öneri yok"} ${esc(b.barkod||"")} ${tarih(b.tarih)}`:(b.ekSure?`Ek süre: ${tarih(b.ekSure)}`:gec?"Süresi geçti":"Bekleniyor")}</small></span>
+      return `<div class="cb"><span class="mark ${b.sonuc==="+"?"plus":b.sonuc?"minus":gec?"late":""}" title="${esc(SONUC_AD[b.sonuc]||"Bekleniyor")}">${b.sonuc?SONUC_ISARET[b.sonuc]:"?"}</span>
+      <span class="nm">${esc(b.kisa?`${b.kisa}`:b.ad)}<small>${b.kisa?esc(b.ad)+" · ":""}${b.sonuc?`${SONUC_AD[b.sonuc]||""} ${esc(b.barkod||"")} ${tarih(b.tarih)}`:(b.ekSure?`Ek süre: ${tarih(b.ekSure)}`:gec?"Süresi geçti":"Bekleniyor")}</small></span>
       ${ew?`<button class="btn sm" data-x="cevap" data-id="${t.id}" data-i="${i}">${b.sonuc?"Düzelt":"İşle"}</button>`:""}</div>`; }).join("")}</div></div>`;
 }
 
@@ -658,14 +660,16 @@ const DX = {
   async arsivcik(d){ if(!confirm("Dosya arşivden çıkarılıp 'Devam ediyor' durumuna alınsın mı?")) return;
     try{ await dosyaGuncelle(d, { durum:"devam" }, "Arşivden çıkarıldı"); if(S.arsiv) delete S.arsiv[d.id]; }catch(x){ hata(x); } },
   cb(d){
-    if(d.cb?.isaret){ if(!confirm("Cumhurbaşkanlığı işareti kaldırılsın mı?")) return;
+    if(d.cb?.isaret && d.cb.sayi){ if(!confirm("Cumhurbaşkanlığı işareti kaldırılsın mı?")) return;
       return dosyaGuncelle(d, { cb:{ ...d.cb, isaret:false } }, "Cumhurbaşkanlığı işareti kaldırıldı").catch(hata); }
-    const m = modal(`<h2>Cumhurbaşkanlığına gönderildi</h2><form><label class="f"><span>Teklif yazısının tarihi</span><input type="date" name="t" value="${bugun()}" required></label>
-      <label class="f"><span>Teklif yazısının sayısı</span><input type="text" name="s" required></label></form>
+    const m = modal(`<h2>Cumhurbaşkanlığına gönderildi</h2><form><label class="f"><span>Teklif yazısının tarihi</span><input type="date" name="t" value="${esc(d.cb?.tarih||bugun())}" required></label>
+      <label class="f"><span>Teklif yazısının sayısı</span><input type="text" name="s" value="${esc(d.cb?.sayi||"")}" required></label></form>
       <div class="foot"><button class="btn" data-k>Vazgeç</button><button class="btn p" data-ok>Kaydet</button></div>`);
     m.querySelector("[data-k]").onclick=kapat;
     m.querySelector("[data-ok]").onclick = async () => { const v = fd(m); if(!v.t || !v.s.trim()) return toast("Tarih ve sayı gerekli.");
-      try{ await dosyaGuncelle(d, { cb:{ isaret:true, tarih:v.t, sayi:v.s.trim() } }, `Cumhurbaşkanlığına gönderildi (${tarih(v.t)}, ${v.s.trim()})`); kapat(); }catch(x){ hata(x); } };
+      const cb = { isaret:true, tarih:v.t, sayi:v.s.trim() }; const patch = { cb };
+      if(d.cb?.isaret && d.raporDuzeltme && d.raporDuzeltme.anahtar===olayAnahtar(d)) patch.raporDuzeltme = { ...d.raporDuzeltme, anahtar:olayAnahtar({ ...d, cb }) };
+      try{ await dosyaGuncelle(d, patch, d.cb?.isaret ? `Teklif yazısı bilgileri girildi (${tarih(v.t)}, ${v.s.trim()})` : `Cumhurbaşkanlığına gönderildi (${tarih(v.t)}, ${v.s.trim()})`); kapat(); }catch(x){ hata(x); } };
   },
   async gizle(d){ try{ await dosyaGuncelle(d, { raporGizle:!d.raporGizle }, d.raporGizle?"Haftalık raporda gösterilecek":"Haftalık raporda yer verilmeyecek"); }catch(x){ hata(x); } },
   hukukcu(d){
@@ -690,7 +694,7 @@ const DX = {
   cevap(d, ds){
     const t = (d.turlar||[]).find(x=>x.id===ds.id); const b = t.birimler[+ds.i];
     const m = modal(`<h2>${esc(b.ad)}</h2><p class="sub">${t.tip==="dis"?"Dış":"İç"} görüş, ${tarih(t.tarih)} · son tarih ${tarih(etkinSon(t,b))||"—"}</p>
-      <form><label class="f"><span>Cevap</span><select name="s"><option value="">Henüz cevap gelmedi</option><option value="+" ${b.sonuc==="+"?"selected":""}>+ Öneri var</option><option value="-" ${b.sonuc==="-"?"selected":""}>− Öneri yok</option></select></label>
+      <form><label class="f"><span>Cevap</span><select name="s"><option value="">Henüz cevap gelmedi</option><option value="+" ${b.sonuc==="+"?"selected":""}>+ Öneri var</option><option value="-" ${b.sonuc==="-"?"selected":""}>− Öneri yok</option><option value="?" ${b.sonuc==="?"?"selected":""}>✓ Cevap geldi (öneri durumu belirtilmemiş)</option><option value="0" ${b.sonuc==="0"?"selected":""}>∅ Cevap vermedi, süre doldu</option></select></label>
       <div class="grid2"><label class="f"><span>Cevap yazısının barkodu</span><input type="text" name="bk" value="${esc(b.barkod||"")}"></label>
       <label class="f"><span>Cevap tarihi</span><input type="date" name="t" value="${esc(b.tarih||bugun())}"></label></div>
       <label class="f"><span>Bu birime ek süre (isteğe bağlı)</span><input type="date" name="ek" value="${esc(b.ekSure||"")}"><div class="hint">Sadece bu birimin son tarihi değişir, hatırlatma buna göre gider.</div></label></form>
@@ -700,10 +704,10 @@ const DX = {
       const turlar = d.turlar.map(x => x.id!==t.id ? x : { ...x, birimler: x.birimler.filter((_,j)=>j!==+ds.i) });
       try{ await dosyaGuncelle(d, { turlar }, `${b.ad} görüş turundan çıkarıldı`); kapat(); }catch(x){ hata(x); } };
     m.querySelector("[data-ok]").onclick = async () => { const v = fd(m);
-      if(v.s && !v.bk.trim() && !confirm("Barkod girmeden kaydedilsin mi?")) return;
+      if(v.s && v.s!=="0" && !v.bk.trim() && !confirm("Barkod girmeden kaydedilsin mi?")) return;
       const yeni = { ...b, sonuc:v.s||null, barkod:v.s?v.bk.trim():"", tarih:v.s?v.t:"", ekSure:v.ek||"" };
       const turlar = d.turlar.map(x => x.id!==t.id ? x : { ...x, birimler: x.birimler.map((y,j)=> j===+ds.i ? yeni : y) });
-      const olay = v.s ? `${b.ad}: ${v.s==="+"?"öneri var":"öneri yok"}${v.bk?` (${v.bk.trim()})`:""}` : (v.ek!==(b.ekSure||"") ? `${b.ad}: ek süre ${tarih(v.ek)||"kaldırıldı"}` : `${b.ad} güncellendi`);
+      const olay = v.s ? `${b.ad}: ${(SONUC_AD[v.s]||"").toLocaleLowerCase("tr")}${v.bk?` (${v.bk.trim()})`:""}` : (v.ek!==(b.ekSure||"") ? `${b.ad}: ek süre ${tarih(v.ek)||"kaldırıldı"}` : `${b.ad} güncellendi`);
       try{ await dosyaGuncelle(d, { turlar }, olay); kapat(); }catch(x){ hata(x); } };
   },
   adimekle(d){
