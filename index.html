@@ -176,10 +176,8 @@ const SONUC_AD = { "+":"Öneri var", "-":"Öneri yok", "0":"Cevap vermedi", "?":
 const SONUC_ISARET = { "+":"+", "-":"−", "0":"∅", "?":"✓" };
 const ROL = { atayan:"Atayan", uzman:"Uzman Yardımcısı", yonetici:"Yönetici", kurucu:"Sistem sahibi" };
 const SONUC = ["Yürürlüğe girdi","Görüş bildirildi","İade edildi","Geri çekildi","Diğer"];
+const ADIM_ESKI = { istem:"Görüş değerlendirme istemi gönderildi", form:"Görüş değerlendirme formu geldi", iade:"Görüş değerlendirme formu iade edildi" };
 const ADIM = {
-  istem:"Görüş değerlendirme istemi gönderildi",
-  form:"Görüş değerlendirme formu geldi",
-  iade:"Görüş değerlendirme formu iade edildi",
   kontrol:"Son kontrole gönderildi",
   raportor:"Raportör dönüşü"
 };
@@ -248,11 +246,26 @@ function olaylar(d){
   const ev = [{tip:"acilis", tarih:d.gelisTarihi||"", sira:0}];
   (d.turlar||[]).forEach((t,i)=>ev.push({tip:"tur", tarih:t.tarih||"", tur:t, sira:1000+i, id:t.id}));
   (d.adimlar||[]).forEach((a,i)=>ev.push({tip:a.tip, tarih:a.tarih||"", adim:a, sira:2000+i, id:a.id}));
+  (d.gdf||[]).forEach((g,i)=>ev.push({tip:g.tip, tarih:g.tarih||"", adim:{ birim:d.birimAd, barkod:g.sayi }, sira:1500+i, id:g.id}));
   if(d.cb?.isaret) ev.push({tip:"cb", tarih:d.cb.tarih||"", sira:3000});
   ev.sort((a,b)=> (a.tarih||"").localeCompare(b.tarih||"") || a.sira-b.sira);
+  let iadeVar = false; ev.forEach(e => { if(e.tip==="iade") iadeVar = true; else if(e.tip==="form" && iadeVar) e.revize = true; else if(e.tip==="istem") iadeVar = false; });
   return ev;
 }
 const olayAnahtar = d => { const ev = olaylar(d); const l = ev[ev.length-1]; return `${ev.length}|${l.tip}|${l.id||""}|${l.tarih}`; };
+function gdfListe(d){
+  const l = [...(d.gdf||[]).map(g=>({ ...g, kaynak:"gdf" })),
+    ...(d.adimlar||[]).filter(a=>["istem","form","iade"].includes(a.tip)).map(a=>({ id:a.id, tip:a.tip, tarih:a.tarih, sayi:a.barkod, ekleyen:a.ekleyen, kaynak:"adim" }))];
+  l.sort((a,b)=>(a.tarih||"").localeCompare(b.tarih||"") || (a.zaman||"").localeCompare(b.zaman||""));
+  let iade = false; l.forEach(g => { if(g.tip==="iade") iade = true; else if(g.tip==="form" && iade){ g.revize = true; iade = false; } else if(g.tip==="istem") iade = false; });
+  return l;
+}
+function gdfDurum(d){
+  const l = gdfListe(d); if(!l.length) return null; const son = l[l.length-1];
+  if(son.tip==="istem" || son.tip==="iade") return { bekleniyor:true, tarih:son.tarih, metin:`${son.tip==="iade"?"Revize form":"Form"} bekleniyor (${tarih(son.tarih)} tarihinden beri)` };
+  return { bekleniyor:false, tarih:son.tarih, metin:`${son.revize?"Revize form":"Form"} geldi (${tarih(son.tarih)})` };
+}
+const GDF_AD = g => g.tip==="istem" ? "İstem gönderildi" : g.tip==="iade" ? "Form iade edildi" : (g.revize ? "Revize form geldi" : "Form geldi");
 function olayMetni(d, e){
   const t = tarih(e.tarih);
   switch(e.tip){
@@ -268,7 +281,7 @@ function olayMetni(d, e){
       return { a, b:"" };
     }
     case "istem": return { a:`Görüş değerlendirme istemi ${t} tarihinde ${yonelme(e.adim.birim||d.birimAd)} gönderildi.`, b:"Görüş değerlendirme formunun Genel Müdürlüğümüze gönderilmesi bekleniyor." };
-    case "form": return { a:`Görüş değerlendirme formu ${t} tarihinde Genel Müdürlüğümüze gönderildi.`, b:"Taslağa nihai hali veriliyor." };
+    case "form": return { a:`${e.revize?"Revize görüş değerlendirme formu":"Görüş değerlendirme formu"} ${t} tarihinde Genel Müdürlüğümüze gönderildi.`, b:"Taslağa nihai hali veriliyor." };
     case "iade": return { a:`Görüş değerlendirme formu ${t} tarihinde ${yonelme(e.adim.birim||d.birimAd)} iade edildi.`, b:"Görüş değerlendirme formunun revize edilerek Genel Müdürlüğümüze gönderilmesi bekleniyor." };
     case "kontrol": return { a:`Nihai taslak ${t} tarihinde son kontrol için ${yonelme(e.adim.birim||d.birimAd)} gönderildi.`, b:"Son kontrol neticesi bekleniyor." };
     case "raportor": return { a:`Raportör dönüşü (${t}): ${e.adim.not||""}`.trim(), b:"" };
@@ -451,6 +464,7 @@ function durumRozet(d){
   let s = `<span class="badge b-${d.durum}">${esc(DURUM[d.durum]||d.durum)}</span>`;
   if(d.cb?.isaret) s += ` <span class="badge b-cb">Cumhurbaşkanlığında</span>`;
   const g = gecikme(d); if(g.var) s += ` <span class="badge b-gec">Gecikme</span>`;
+  if(d.durum!=="arsiv" && gdfDurum(d)?.bekleniyor) s += ` <span class="badge b-onay_uzman">Form bekleniyor</span>`;
   if(d.raporGizle && d.kategori==="A1") s += ` <span class="badge b-gizli">Raporda gizli</span>`;
   if(d.eskiKayit) s += ` <span class="badge b-gizli">Eski kayıt</span>`;
   return s;
@@ -554,7 +568,7 @@ async function vDosyalar(m, r, benim){
   if(k) l = l.filter(x=>x.kategori===k);
   if(p) l = l.filter(x=>x.atananEmail===p);
   const df = { aktif:x=>x.durum!=="arsiv", devam:x=>x.durum==="devam", beklemede:x=>x.durum==="beklemede", cb:x=>x.cb?.isaret && x.durum!=="arsiv",
-    onay:x=>x.durum.startsWith("onay"), gec:x=>gecikme(x).var, arsiv:x=>x.durum==="arsiv", hepsi:()=>true }[d] || (()=>true);
+    onay:x=>x.durum.startsWith("onay"), gec:x=>gecikme(x).var, form:x=>x.durum!=="arsiv" && !!gdfDurum(x)?.bekleniyor, arsiv:x=>x.durum==="arsiv", hepsi:()=>true }[d] || (()=>true);
   l = l.filter(df);
   if(ara){ const a = norm(ara); l = l.filter(x => norm([x.ad,x.dosyaNo,x.birimAd,x.sorumluAd,(x.destekHukukcular||[]).join(" "),x.gelisBarkod,x.eskiBilgi].join(" ")).includes(a)); }
   sirala(l);
@@ -564,7 +578,7 @@ async function vDosyalar(m, r, benim){
   m.innerHTML = `<h1>${esc(baslik)}</h1><p class="sub">${l.length} dosya</p>
     <div class="tabs">${[["","Tümü"],...Object.entries(KATS)].map(([kk,t])=>`<a href="${link({k:kk})}" class="${k===kk?"on":""}">${kk?`<span class="kat k-${kk}">${kk}</span> `:""}${esc(t)}</a>`).join("")}</div>
     <div class="filters"><input type="search" id="fq" placeholder="Ad, dosya no, birim, barkod ara" value="${esc(ara)}">
-      <select id="fd">${[["aktif","Tüm aktif dosyalar"],["devam","Devam ediyor"],["beklemede","Beklemede"],["cb","Cumhurbaşkanlığında"],["onay","Onay bekliyor"],["gec","Gecikmesi olan"],["arsiv","Arşiv"],["hepsi","Aktif + arşiv"]].map(([v,t])=>`<option value="${v}" ${v===d?"selected":""}>${t}</option>`).join("")}</select>
+      <select id="fd">${[["aktif","Tüm aktif dosyalar"],["devam","Devam ediyor"],["beklemede","Beklemede"],["cb","Cumhurbaşkanlığında"],["onay","Onay bekliyor"],["gec","Gecikmesi olan"],["form","Görüş değerlendirme formu bekleniyor"],["arsiv","Arşiv"],["hepsi","Aktif + arşiv"]].map(([v,t])=>`<option value="${v}" ${v===d?"selected":""}>${t}</option>`).join("")}</select>
       ${kisiSec || "<span></span>"}</div>
     ${l.length ? `<div class="list">${l.slice(0,300).map(satir).join("")}</div>${l.length>300?`<p class="sub">İlk 300 dosya gösteriliyor, aramayı daraltın.</p>`:""}`
       : `<div class="empty">Bu ölçütlere uyan dosya yok.${isMgr()?` <a href="#/yeni">Yeni dosya açın</a>.`:""}</div>`}`;
@@ -622,9 +636,12 @@ async function vDosya(m, r){
   ${(d.turlar||[]).length ? d.turlar.map(t=>turHtml(d,t,ew)).join("") : `<div class="empty">Henüz görüşe açılmadı.</div>`}
   ${ew?`<p><button class="btn p" data-x="turekle">Görüşe aç</button></p>`:""}
 
+  <h2>Görüş değerlendirme formu</h2>
+  ${gdfHtml(d, ew)}
+
   <h2>Süreç adımları</h2>
-  <p class="hint" style="margin-top:-6px">Aşamayı değiştiren yazılar. Haftalık rapordaki açıklamalar bunlardan oluşur.</p>
-  ${(d.adimlar||[]).length ? `<ul class="tl">${[...d.adimlar].sort((a,b)=>(a.tarih||"").localeCompare(b.tarih||"")).map(a=>`<li><b>${esc(ADIM[a.tip]||a.tip)}</b> – ${tarih(a.tarih)}${a.birim?` – ${esc(a.birim)}`:""}${a.barkod?` <span class="num">(${esc(a.barkod)})</span>`:""}${a.not?`<br>${esc(a.not)}`:""}<br><small>${esc(a.ekleyen||"")}</small> ${ew?`<button class="btn sm danger" data-x="adimsil" data-id="${a.id}">Sil</button>`:""}</li>`).join("")}</ul>` : `<div class="empty">Adım girilmedi.</div>`}
+  <p class="hint" style="margin-top:-6px">Son kontrol ve raportör dönüşü gibi aşamayı değiştiren diğer yazılar. Haftalık rapordaki açıklamalar görüş turları, görüş değerlendirme formu ve bu adımlardan oluşur.</p>
+  ${(d.adimlar||[]).filter(a=>ADIM[a.tip]).length ? `<ul class="tl">${[...d.adimlar].filter(a=>ADIM[a.tip]).sort((a,b)=>(a.tarih||"").localeCompare(b.tarih||"")).map(a=>`<li><b>${esc((ADIM[a.tip]||ADIM_ESKI[a.tip])||a.tip)}</b> – ${tarih(a.tarih)}${a.birim?` – ${esc(a.birim)}`:""}${a.barkod?` <span class="num">(${esc(a.barkod)})</span>`:""}${a.not?`<br>${esc(a.not)}`:""}<br><small>${esc(a.ekleyen||"")}</small> ${ew?`<button class="btn sm danger" data-x="adimsil" data-id="${a.id}">Sil</button>`:""}</li>`).join("")}</ul>` : `<div class="empty">Adım girilmedi.</div>`}
   ${ew?`<p><button class="btn" data-x="adimekle">Adım ekle</button></p>`:""}
 
   ${d.eskiBilgi?`<h2>Eski kayıttan aktarılan bilgiler</h2><div class="pre">${esc(d.eskiBilgi)}</div>`:""}
@@ -632,6 +649,20 @@ async function vDosya(m, r){
   <h2>Geçmiş</h2>
   ${(d.gecmis||[]).length ? `<ul class="tl">${[...d.gecmis].reverse().map(g=>`<li>${esc(g.olay)}<br><small>${esc(g.kim)} · ${new Date(g.zaman).toLocaleString("tr-TR")}</small></li>`).join("")}</ul>` : `<p class="sub">Kayıt yok.</p>`}`;
   m.querySelectorAll("[data-x]").forEach(el => el.onclick = () => DX[el.dataset.x](d, el.dataset));
+}
+function gdfHtml(d, ew){
+  const l = gdfListe(d), du = gdfDurum(d); const son = l[l.length-1];
+  const btn = [];
+  if(ew){
+    if(!son || son.tip==="form") btn.push(`<button class="btn ${son?"":"p"}" data-x="gdfekle" data-tip="istem">${son?"Yeni istem gönder":"İstem gönder"}</button>`);
+    if(son && son.tip!=="form") btn.push(`<button class="btn p" data-x="gdfekle" data-tip="form">${son.tip==="iade"?"Revize form geldi":"Form geldi"}</button>`);
+    if(son && son.tip==="form") btn.push(`<button class="btn" data-x="gdfekle" data-tip="iade">Form iade edildi</button>`);
+  }
+  return `<div class="panel">
+    <p style="margin-top:0"><b>${du ? esc(du.metin) : "İstem gönderilmedi"}</b>${d.birimAd?` <span class="sub">· Karşı taraf: ${esc(d.birimAd)}</span>`:""}</p>
+    ${l.length ? `<ul class="tl">${l.map(g=>`<li><b>${GDF_AD(g)}</b> – ${tarih(g.tarih)}${g.sayi?` – <span class="num">${esc(g.sayi)}</span>`:""}<br><small>${esc(g.ekleyen||"")}</small>
+      ${ew?` <button class="btn sm danger" data-x="gdfsil" data-id="${g.id}" data-k="${g.kaynak}">Sil</button>`:""}</li>`).join("")}</ul>` : ""}
+    ${btn.length?`<div class="row" style="margin-top:10px">${btn.join("")}</div>`:""}</div>`;
 }
 function turHtml(d,t,ew){
   const bg = bugun();
@@ -759,8 +790,25 @@ const DX = {
       const a = { id:uid(), tip:v.tip, tarih:v.tarih, barkod:(v.barkod||"").trim(), birim:["form","raportor"].includes(v.tip)?"":(v.birim||"").trim(), not:(v.not||"").trim(), ekleyen:myName(), zaman:simdi() };
       try{ await dosyaGuncelle(d, { adimlar:[...(d.adimlar||[]), a] }, `Adım eklendi: ${ADIM[v.tip]} (${tarih(v.tarih)})`); kapat(); }catch(x){ hata(x); } };
   },
-  async adimsil(d, ds){ const a = (d.adimlar||[]).find(x=>x.id===ds.id); if(!a || !confirm(`"${ADIM[a.tip]}" adımı silinsin mi?`)) return;
-    try{ await dosyaGuncelle(d, { adimlar:d.adimlar.filter(x=>x.id!==ds.id) }, `Adım silindi: ${ADIM[a.tip]} (${tarih(a.tarih)})`); }catch(x){ hata(x); } }
+  gdfekle(d, ds){
+    const bas = { istem:"Görüş değerlendirme istemi gönder", form:"Görüş değerlendirme formu geldi", iade:"Görüş değerlendirme formu iade edildi" }[ds.tip];
+    const m = modal(`<h2>${bas}</h2>${d.birimAd?`<p class="sub">${ds.tip==="form"?"Gönderen":"Gönderilen"}: ${esc(d.birimAd)}</p>`:""}<form>
+      <div class="grid2"><label class="f"><span>Yazının tarihi</span><input type="date" name="t" value="${bugun()}" required></label>
+      <label class="f"><span>Yazının sayısı / barkodu</span><input type="text" name="s"></label></div></form>
+      <div class="foot"><button class="btn" data-k>Vazgeç</button><button class="btn p" data-ok>Kaydet</button></div>`);
+    m.querySelector("[data-k]").onclick = kapat;
+    m.querySelector("[data-ok]").onclick = async () => { const v = fd(m); if(!v.t) return toast("Tarih gerekli.");
+      if(!v.s.trim() && !confirm("Sayı girmeden kaydedilsin mi?")) return;
+      const g = { id:uid(), tip:ds.tip, tarih:v.t, sayi:v.s.trim(), ekleyen:myName(), zaman:simdi() };
+      try{ await dosyaGuncelle(d, { gdf:[...(d.gdf||[]), g] }, `${bas} (${tarih(v.t)}${v.s.trim()?", "+v.s.trim():""})`); kapat(); }catch(x){ hata(x); } };
+  },
+  async gdfsil(d, ds){
+    const g = gdfListe(d).find(x=>x.id===ds.id); if(!g || !confirm(`"${GDF_AD(g)} – ${tarih(g.tarih)}" kaydı silinsin mi?`)) return;
+    const patch = ds.k==="adim" ? { adimlar:(d.adimlar||[]).filter(a=>a.id!==g.id) } : { gdf:(d.gdf||[]).filter(x=>x.id!==g.id) };
+    try{ await dosyaGuncelle(d, patch, `Görüş değerlendirme kaydı silindi: ${GDF_AD(g)} (${tarih(g.tarih)})`); }catch(x){ hata(x); }
+  },
+  async adimsil(d, ds){ const a = (d.adimlar||[]).find(x=>x.id===ds.id); if(!a || !confirm(`"${(ADIM[a.tip]||ADIM_ESKI[a.tip])}" adımı silinsin mi?`)) return;
+    try{ await dosyaGuncelle(d, { adimlar:d.adimlar.filter(x=>x.id!==ds.id) }, `Adım silindi: ${(ADIM[a.tip]||ADIM_ESKI[a.tip])} (${tarih(a.tarih)})`); }catch(x){ hata(x); } }
 };
 function retModal(d, kim){
   const m = modal(`<h2>Onayı reddet</h2><form><label class="f"><span>Gerekçe</span><textarea name="g" required placeholder="Örn. Görüş değerlendirme formu henüz gelmedi."></textarea></label></form>
