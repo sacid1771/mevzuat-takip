@@ -410,12 +410,15 @@ function dinle(){
 }
 
 /* ---------- iskelet & yönlendirme ---------- */
+const AYRI_LISTE = ["genelgeler","imza","notlar","rehber"];
 function navLinkleri(){
   const l = [["pano","Pano","◧"],["dosyalar","Dosyalar","☰"]];
   if(S.role==="uzman") l.push(["benim","Dosyalarım","◉"]);
   if(isMgr()) l.push(["yeni","Yeni dosya","＋"]);
-  l.push(["raporlar","Raporlar","▤"],["listeler","Listeler","≡"]);
+  AYRI_LISTE.forEach(id => { if(S.ekListeler[id]) l.push(["liste/"+id, S.ekListeler[id].ad, "≡"]); });
+  l.push(["listeler","Listeler","≡"]);
   if(isYon()) l.push(["ayarlar","Ayarlar","⚙"]);
+  l.push(["raporlar","Raporlar","▤"]);
   return l;
 }
 function iskelet(){
@@ -437,7 +440,7 @@ function navCiz(r){
   document.getElementById("side").innerHTML = l.map(([k,t])=>`<a href="#/${k}" class="${r===k?"on":""}">${t}</a>`).join("");
   const alt = l.filter(([k])=>["pano","dosyalar","benim","yeni","raporlar"].includes(k)).slice(0,4);
   alt.push(["daha","Diğer","⋯"]);
-  document.getElementById("bottom").innerHTML = alt.map(([k,t,i])=>`<a href="#/${k}" class="${r===k||(k==="daha"&&["listeler","ayarlar","bildirimler"].includes(r))?"on":""}"><b>${i}</b>${t}</a>`).join("");
+  document.getElementById("bottom").innerHTML = alt.map(([k,t,i])=>`<a href="#/${k}" class="${r===k||(k==="daha"&&(["listeler","ayarlar","bildirimler"].includes(r)||String(r).startsWith("liste/")))?"on":""}"><b>${i}</b>${t}</a>`).join("");
   const n = S.bildirimler.filter(b=>!b.okundu).length;
   document.getElementById("zilsay").innerHTML = n ? `<span class="dot">${n}</span>` : "";
 }
@@ -446,7 +449,7 @@ function rota(){
   const [yol, qs] = h.split("?"); const parca = yol.split("/");
   return { ad:parca[0], p:parca.slice(1), q:Object.fromEntries(new URLSearchParams(qs||"")) };
 }
-const CANLI = new Set(["pano","dosyalar","benim","dosya","bildirimler","ayarlar","listeler","daha"]);
+const CANLI = new Set(["pano","dosyalar","benim","dosya","bildirimler","ayarlar","daha"]);
 let bekleyenCizim=false;
 function cizCanli(){
   if(!S.ready) return;
@@ -461,10 +464,10 @@ new MutationObserver(()=>{ if(!document.getElementById("modal").innerHTML && bek
 window.addEventListener("hashchange", () => { if(S.ready){ ciz(); window.scrollTo(0,0); } });
 
 function ciz(){
-  const r = rota(); navCiz(r.ad === "dosya" ? "dosyalar" : r.ad);
+  const r = rota(); navCiz(r.ad === "dosya" ? "dosyalar" : r.ad === "liste" ? "liste/"+r.p[0] : r.ad);
   const m = document.getElementById("main");
   const V = { pano:vPano, dosyalar:vDosyalar, benim:vBenim, dosya:vDosya, yeni:vYeni, raporlar:vRaporlar, rapor:vRapor,
-    listeler:vListeler, ayarlar:vAyarlar, bildirimler:vBildirimler, daha:vDaha, aktarim:vAktarim };
+    listeler:vListeler, liste:(m,r)=>vListeler(m,r,true), ayarlar:vAyarlar, bildirimler:vBildirimler, daha:vDaha, aktarim:vAktarim };
   (V[r.ad] || vPano)(m, r);
 }
 
@@ -1020,7 +1023,8 @@ function vBildirimler(m){
 function vDaha(m){
   m.innerHTML = `<h1>Diğer</h1><div class="list">
     <a class="item" href="#/bildirimler"><div class="spine"></div><div class="body"><div class="t">Bildirimler</div></div><div class="r"></div></a>
-    <a class="item" href="#/listeler"><div class="spine"></div><div class="body"><div class="t">Listeler</div><div class="m">Rehber, notlar, genelgeler, kanun paketleri…</div></div><div class="r"></div></a>
+    <a class="item" href="#/listeler"><div class="spine"></div><div class="body"><div class="t">Listeler</div><div class="m">Önemli belgeler, kanun paketleri, mülga mevzuat ve eski kayıtlar</div></div><div class="r"></div></a>
+    ${AYRI_LISTE.filter(id=>S.ekListeler[id]).map(id=>`<a class="item" href="#/liste/${id}"><div class="spine"></div><div class="body"><div class="t">${esc(S.ekListeler[id].ad)}</div></div><div class="r"></div></a>`).join("")}
     ${isMgr()?`<a class="item" href="#/raporlar"><div class="spine"></div><div class="body"><div class="t">Raporlar</div></div><div class="r"></div></a>`:""}
     ${isYon()?`<a class="item" href="#/ayarlar"><div class="spine"></div><div class="body"><div class="t">Ayarlar</div><div class="m">Kişiler, roller, birimler, hukukçular</div></div><div class="r"></div></a>`:""}
     </div>`;
@@ -1164,19 +1168,21 @@ async function wordIndir(children, ad){
 function indir(blob, ad){ const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = ad; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 1000); }
 
 /* ---------- LİSTELER ---------- */
-async function vListeler(m, r){
-  const listeler = Object.values(S.ekListeler).sort((a,b)=>(a.sira||0)-(b.sira||0));
-  if(!listeler.length){ m.innerHTML = `<h1>Listeler</h1><div class="empty">Henüz liste yok. Eski kayıtlar aktarıldığında rehber, notlar, genelgeler ve diğer listeler burada görünecek.</div>`; return; }
-  const aktif = S.ekListeler[r.p[0]] || listeler[0];
-  m.innerHTML = `<h1>Listeler</h1><div class="tabs">${listeler.map(l=>`<a href="#/listeler/${l.id}" class="${l.id===aktif.id?"on":""}">${esc(l.ad)}</a>`).join("")}</div><div class="empty">Yükleniyor…</div>`;
+async function vListeler(m, r, tek){
+  const listeler = Object.values(S.ekListeler).filter(l=>!AYRI_LISTE.includes(l.id)).sort((a,b)=>(a.sira||0)-(b.sira||0));
+  if(!listeler.length && !tek){ m.innerHTML = `<h1>Listeler</h1><div class="empty">Henüz liste yok. Eski kayıtlar aktarıldığında rehber, notlar, genelgeler ve diğer listeler burada görünecek.</div>`; return; }
+  const aktif = tek ? S.ekListeler[r.p[0]] : (listeler.find(l=>l.id===r.p[0]) || listeler[0]);
+  if(!aktif){ m.innerHTML = `<div class="empty">Liste bulunamadı.</div>`; return; }
+  const ust = tek ? `<h1>${esc(aktif.ad)}</h1>` : `<h1>Listeler</h1><div class="tabs">${listeler.map(l=>`<a href="#/listeler/${l.id}" class="${l.id===aktif.id?"on":""}">${esc(l.ad)}</a>`).join("")}</div>`;
+  m.innerHTML = ust + `<div class="empty">Yükleniyor…</div>`;
   const snap = await getDocs(query(collection(db,"ekKayitlar"), where("listeId","==",aktif.id)));
-  if(rota().ad!=="listeler") return;
+  if(rota().ad!==(tek?"liste":"listeler")) return;
   const kayit = []; snap.forEach(x=>kayit.push({id:x.id,...x.data()})); kayit.sort((a,b)=>(a.sira||0)-(b.sira||0));
   const yaz = !aktif.salt || isYon();
   const ciz_ = ara => { const a = norm(ara); const l = a ? kayit.filter(k=>norm(Object.values(k.degerler||{}).join(" ")).includes(a)) : kayit;
     return `<div class="scroll"><table class="t"><thead><tr>${aktif.sutunlar.map(s=>`<th>${esc(s)}</th>`).join("")}${yaz?"<th></th>":""}</tr></thead><tbody>
     ${l.map(k=>`<tr>${aktif.sutunlar.map(s=>`<td>${esc(k.degerler?.[s]??"").replace(/\n/g,"<br>")}</td>`).join("")}${yaz?`<td><button class="btn sm" data-ek="${k.id}">Düzenle</button></td>`:""}</tr>`).join("") || `<tr><td colspan="${aktif.sutunlar.length+1}" class="sub">Kayıt yok.</td></tr>`}</tbody></table></div>`; };
-  m.innerHTML = `<h1>Listeler</h1><div class="tabs">${listeler.map(l=>`<a href="#/listeler/${l.id}" class="${l.id===aktif.id?"on":""}">${esc(l.ad)}</a>`).join("")}</div>
+  m.innerHTML = ust + `
     ${aktif.salt?`<p class="hint">Eski kayıt arşivi. ${isYon()?"Sadece yöneticiler düzenleyebilir.":"Salt okunur."}</p>`:""}
     <div class="row" style="margin-bottom:10px"><input type="search" id="la" placeholder="Bu listede ara" style="flex:1;max-width:380px">${yaz?`<button class="btn p" id="lyeni">Kayıt ekle</button>`:""}</div><div id="lt">${ciz_("")}</div>`;
   const bagla = () => m.querySelectorAll("[data-ek]").forEach(b => b.onclick = () => ekKayitModal(aktif, kayit.find(k=>k.id===b.dataset.ek)));
