@@ -428,6 +428,7 @@ function cizCanli(){
   navCiz(rota().ad);
   if(!CANLI.has(rota().ad)) return;
   if(document.getElementById("modal").innerHTML) { bekleyenCizim=true; return; }
+  if(document.querySelector("#main [data-arac-aktif]")) return;
   ciz();
 }
 new MutationObserver(()=>{ if(!document.getElementById("modal").innerHTML && bekleyenCizim){ bekleyenCizim=false; ciz(); } })
@@ -1109,25 +1110,36 @@ function turOner(v, liste){
   return { t: aday || bul("Diğer") || "", emin: eslesen.length===1 && (!ilk[2] || !!on) };
 }
 async function turEslestir(out){
+  out.dataset.aracAktif = "1";
   out.textContent = "Dosyalar taranıyor…";
   try{ await arsivYukle(true); }catch(x){ hata(x); return; }
-  const liste = S.turler; const say = {};
-  Object.values(tumDosyalar()).forEach(d => { if(d.tur && !liste.includes(d.tur)) say[d.tur] = (say[d.tur]||0)+1; });
-  const degerler = Object.keys(say).sort((a,b)=>a.localeCompare(b,"tr"));
+  const liste = S.turler; const grup = {};
+  Object.values(tumDosyalar()).forEach(d => { if(d.tur && !liste.includes(d.tur)) (grup[d.tur] = grup[d.tur] || []).push(d); });
+  const degerler = Object.keys(grup).sort((a,b)=>a.localeCompare(b,"tr"));
   if(!degerler.length){ out.innerHTML = `<p class="sub">Tüm dosyaların türü listede. Yapılacak bir şey yok.</p>`; return; }
-  out.innerHTML = `<div class="scroll"><table class="t"><thead><tr><th>Dosyalardaki tür</th><th class="n">Dosya</th><th>Yeni tür</th></tr></thead><tbody>
-    ${degerler.map((v,i) => { const o = turOner(v, liste); return `<tr><td>${esc(v)}${o.emin?"":` <span class="badge b-beklemede">Kontrol edin</span>`}</td><td class="n">${say[v]}</td>
-      <td><select data-te="${i}">${liste.map(t=>`<option ${t===o.t?"selected":""}>${esc(t)}</option>`).join("")}</select></td></tr>`; }).join("")}</tbody></table></div>
-    <p><button class="btn p" id="teuy">Uygula</button></p>`;
+  const secenek = (sec, bos) => (bos?`<option value="">Yukarıdaki seçimle aynı</option>`:"") + liste.map(t=>`<option ${t===sec?"selected":""}>${esc(t)}</option>`).join("");
+  out.innerHTML = `<p class="hint">Bir satırdaki "Dosyalar" düğmesiyle o türdeki dosyaları görebilir, gerekirse tek tek farklı tür seçebilirsiniz. "Aç" bağlantısı dosyayı yeni sekmede açar.</p>
+    <div class="scroll"><table class="t"><thead><tr><th>Dosyalardaki tür</th><th class="n">Dosya</th><th>Yeni tür</th><th></th></tr></thead><tbody>
+    ${degerler.map((v,i) => { const o = turOner(v, liste); const l = grup[v]; return `<tr><td>${esc(v)}${o.emin?"":` <span class="badge b-beklemede">Kontrol edin</span>`}</td><td class="n">${l.length}</td>
+      <td><select data-te="${i}">${secenek(o.t)}</select></td><td><button class="btn sm" data-ted="${i}">Dosyalar</button></td></tr>
+      <tr hidden data-tel="${i}"><td colspan="4" style="background:#F6F8F9"><table class="t"><tbody>${l.map(d=>`<tr>
+        <td style="width:110px"><span class="kat k-${d.kategori}">${d.kategori}</span> <span class="num">${esc(d.dosyaNo||"—")}</span></td>
+        <td>${esc(d.ad)}<br><small class="sub">${esc(d.birimAd||"")} · ${tarih(d.gelisTarihi)} · ${esc(DURUM[d.durum]||"")}</small></td>
+        <td style="width:220px"><select data-tef="${d.id}">${secenek("", true)}</select></td>
+        <td style="width:50px"><a href="#/dosya/${d.id}" target="_blank" rel="noopener">Aç</a></td></tr>`).join("")}</tbody></table></td></tr>`; }).join("")}</tbody></table></div>
+    <p style="margin-top:10px"><button class="btn p" id="teuy">Uygula</button></p>`;
+  out.querySelectorAll("[data-ted]").forEach(b => b.onclick = () => { const r = out.querySelector(`[data-tel="${b.dataset.ted}"]`); r.hidden = !r.hidden; b.textContent = r.hidden ? "Dosyalar" : "Gizle"; });
   out.querySelector("#teuy").onclick = async () => {
     const harita = {}; out.querySelectorAll("[data-te]").forEach(sl => harita[degerler[+sl.dataset.te]] = sl.value);
+    const tek = {}; out.querySelectorAll("[data-tef]").forEach(sl => { if(sl.value) tek[sl.dataset.tef] = sl.value; });
     out.querySelector("#teuy").disabled = true;
-    const yamalar = Object.values(tumDosyalar()).filter(d => harita[d.tur]).map(d => [d, { tur:harita[d.tur] }]);
+    const yamalar = Object.values(tumDosyalar()).filter(d => harita[d.tur]).map(d => [d, { tur: tek[d.id] || harita[d.tur] }]);
     try{ for(let i=0;i<yamalar.length;i+=400){ const bt = writeBatch(db); yamalar.slice(i,i+400).forEach(([d,p]) => bt.update(doc(db,"dosyalar",d.id), p)); await bt.commit(); }
-      S.arsiv = null; toast(`${yamalar.length} dosyanın türü güncellendi`); out.innerHTML = `<p>${yamalar.length} dosyanın türü güncellendi.</p>`;
+      S.arsiv = null; delete out.dataset.aracAktif; toast(`${yamalar.length} dosyanın türü güncellendi`); out.innerHTML = `<p>${yamalar.length} dosyanın türü güncellendi.</p>`;
     }catch(x){ hata(x); out.querySelector("#teuy").disabled = false; } };
 }
 async function hukukcuDuzenle(out){
+  out.dataset.aracAktif = "1";
   out.textContent = "Dosyalar taranıyor…";
   try{ await arsivYukle(true); }catch(x){ hata(x); return; }
   const ekip = {}; Object.values(S.users).forEach(u => ekip[norm(u.ad)] = u);
@@ -1191,10 +1203,11 @@ async function hukukcuDuzenle(out){
       for(let i=0;i<yamalar.length;i+=400){ const bt = writeBatch(db); yamalar.slice(i,i+400).forEach(([d,p]) => bt.update(doc(db,"dosyalar",d.id), p)); await bt.commit(); }
       for(const [h,,islem,yeni] of listeIslem){ if(islem==="sil") await deleteDoc(doc(db,"hukukcular",h.id)); else await updateDoc(doc(db,"hukukcular",h.id), { ad:yeni, eskiAdlar:[...new Set([...(h.eskiAdlar||[]), h.ad])] }); }
       for(const a of yeniHukukcu) await addDoc(collection(db,"hukukcular"), { ad:a });
-      S.arsiv = null; toast(`Tamamlandı: ${yamalar.length} dosya güncellendi, ${listeIslem.length} liste kaydı düzeltildi`);
+      S.arsiv = null; delete out.dataset.aracAktif; toast(`Tamamlandı: ${yamalar.length} dosya güncellendi, ${listeIslem.length} liste kaydı düzeltildi`);
     }catch(x){ hata(x); } };
 }
 async function hukukcuTemizle(out){
+  out.dataset.aracAktif = "1";
   out.textContent = "Dosyalar taranıyor…";
   try{ await arsivYukle(true); }catch(x){ hata(x); return; }
   const gruplar = {};
@@ -1228,10 +1241,11 @@ async function hukukcuTemizle(out){
       for(let i=0;i<yamalar.length;i+=400){ const bt = writeBatch(db); yamalar.slice(i,i+400).forEach(([d,p]) => bt.update(doc(db,"dosyalar",d.id), p)); await bt.commit(); }
       for(const [h,e] of eskiGuncelle) await updateDoc(doc(db,"hukukcular",h.id), { eskiAdlar:e });
       for(let i=0;i<silinecek.length;i+=400){ const bt = writeBatch(db); silinecek.slice(i,i+400).forEach(h => bt.delete(doc(db,"hukukcular",h.id))); await bt.commit(); }
-      S.arsiv = null; toast(`Düzeltmeler uygulandı: ${silinecek.length} hukukçu birleştirildi, ${yamalar.length} dosya güncellendi`);
+      S.arsiv = null; delete out.dataset.aracAktif; toast(`Düzeltmeler uygulandı: ${silinecek.length} hukukçu birleştirildi, ${yamalar.length} dosya güncellendi`);
     }catch(x){ hata(x); } };
 }
 async function birimTemizle(out){
+  out.dataset.aracAktif = "1";
   out.textContent = "Dosyalar taranıyor…";
   try{ await arsivYukle(true); }catch(x){ hata(x); return; }
   const gruplar = {};
@@ -1261,7 +1275,7 @@ async function birimTemizle(out){
       for(let i=0;i<yamalar.length;i+=400){ const bt = writeBatch(db); yamalar.slice(i,i+400).forEach(([d,p]) => bt.update(doc(db,"dosyalar",d.id), p)); await bt.commit(); out.firstChild.textContent = `Dosyalar güncelleniyor: ${Math.min(i+400,yamalar.length)}/${yamalar.length}`; }
       for(const [b,k] of kisaGuncelle) await updateDoc(doc(db,"birimler",b.id), { kisaltma:k });
       for(let i=0;i<silinecek.length;i+=400){ const bt = writeBatch(db); silinecek.slice(i,i+400).forEach(b => bt.delete(doc(db,"birimler",b.id))); await bt.commit(); }
-      S.arsiv = null; out.innerHTML = `<p>Tamamlandı: ${silinecek.length} birim birleştirildi, ${yamalar.length} dosya güncellendi.</p>`; toast("Düzeltmeler uygulandı");
+      S.arsiv = null; delete out.dataset.aracAktif; out.innerHTML = `<p>Tamamlandı: ${silinecek.length} birim birleştirildi, ${yamalar.length} dosya güncellendi.</p>`; toast("Düzeltmeler uygulandı");
     }catch(x){ hata(x); } };
 }
 const EPOSTA_YOK = "@eposta-yok.local";
