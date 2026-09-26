@@ -178,6 +178,7 @@ const ROL = { atayan:"Atayan", uzman:"Uzman Yardımcısı", yonetici:"Yönetici"
 const SONUC = ["Yürürlüğe girdi","Görüş bildirildi","İade edildi","Geri çekildi","Diğer"];
 const NIHAI = { olurh:"Bakan Oluru hazırlandı", olur:"Bakan Oluru imzalandı", rg:"Resmî Gazete'de yayımlandı", yb:"Mevzuat yürürlük bildirimi yapıldı", tiade:"Taslak iade edildi", geri:"Taslak geri çekildi" };
 const NIHAI_SON = ["yb","tiade","geri"];
+const NIHAI_SIRA = { olurh:1, teklif:1, olur:2, rg:2, yb:3, tiade:4, geri:4 };
 const ADIM_ESKI = { istem:"Görüş değerlendirme istemi gönderildi", form:"Görüş değerlendirme formu geldi", iade:"Görüş değerlendirme formu iade edildi" };
 const ADIM = {
   kontrol:"Son kontrole gönderildi",
@@ -248,10 +249,10 @@ function gecikme(d){
 function olaylar(d){
   const ev = [{tip:"acilis", tarih:d.gelisTarihi||"", sira:0}];
   (d.turlar||[]).forEach((t,i)=>ev.push({tip:"tur", tarih:t.tarih||"", tur:t, sira:1000+i, id:t.id}));
-  (d.adimlar||[]).forEach((a,i)=>ev.push({tip:a.tip, tarih:a.tarih||"", adim:a, sira:2000+i, id:a.id}));
-  (d.sonucAdim||[]).forEach((x,i)=>ev.push({tip:x.tip, tarih:x.tarih||"", adim:{ birim:d.birimAd, barkod:x.sayi, sayi:x.sayi }, sira:2500+i, id:x.id}));
+  (d.adimlar||[]).forEach((a,i)=>ev.push({tip:a.tip, tarih:a.tarih||"", adim:a, sira:(a.tip==="raportor"?2420:2000)+i, id:a.id}));
+  (d.sonucAdim||[]).forEach((x,i)=>ev.push({tip:x.tip, tarih:x.tarih||"", adim:{ birim:d.birimAd, barkod:x.sayi, sayi:x.sayi }, sira:2500+(NIHAI_SIRA[x.tip]||0)*20+i, id:x.id}));
   (d.kategori==="A1" ? (d.gdf||[]) : []).forEach((g,i)=>ev.push({tip:g.tip, tarih:g.tarih||"", adim:{ birim:d.birimAd, barkod:g.sayi }, sira:1500+i, id:g.id}));
-  if(d.cb?.isaret) ev.push({tip:"cb", tarih:d.cb.tarih||"", sira:3000});
+  if(d.cb?.isaret) ev.push({tip:"cb", tarih:d.cb.tarih||"", sira:2400});
   ev.sort((a,b)=> (a.tarih||"").localeCompare(b.tarih||"") || a.sira-b.sira);
   let iadeVar = false; ev.forEach(e => { if(e.tip==="iade") iadeVar = true; else if(e.tip==="form" && iadeVar) e.revize = true; else if(e.tip==="istem") iadeVar = false; });
   return ev;
@@ -259,7 +260,7 @@ function olaylar(d){
 const olayAnahtar = d => { const ev = olaylar(d); const l = ev[ev.length-1]; return `${ev.length}|${l.tip}|${l.id||""}|${l.tarih}`; };
 function gdfListe(d){
   const l = [...(d.gdf||[]).map(g=>({ ...g, kaynak:"gdf" })),
-    ...(d.adimlar||[]).filter(a=>["istem","form","iade"].includes(a.tip)).map(a=>({ id:a.id, tip:a.tip, tarih:a.tarih, sayi:a.barkod, ekleyen:a.ekleyen, kaynak:"adim" }))];
+    ...(d.adimlar||[]).filter(a=>["istem","form","iade"].includes(a.tip)).map(a=>({ id:a.id, tip:a.tip, tarih:a.tarih, sayi:a.barkod, not:a.not, ekleyen:a.ekleyen, kaynak:"adim" }))];
   l.sort((a,b)=>(a.tarih||"").localeCompare(b.tarih||"") || (a.zaman||"").localeCompare(b.zaman||""));
   let iade = false; l.forEach(g => { if(g.tip==="iade") iade = true; else if(g.tip==="form" && iade){ g.revize = true; iade = false; } else if(g.tip==="istem") iade = false; });
   return l;
@@ -290,8 +291,8 @@ function olayMetni(d, e){
     case "kontrol": return { a:`Nihai taslak ${t} tarihinde son kontrol için ${yonelme(e.adim.birim||d.birimAd)} gönderildi.`, b:"Son kontrol neticesi bekleniyor." };
     case "raportor": return { a:`Raportör dönüşü (${t}): ${e.adim.not||""}`.trim(), b:"" };
     case "olurh": return { a:`Bakan Oluru ${t} tarihinde hazırlanarak imzaya sunuldu.`, b:"Bakan Olurunun imzalanması bekleniyor." };
-    case "olur": return { a:`Bakan Oluru ${t} tarih ve ${e.adim.sayi||"…"} sayı ile imzalandı.`, b:"Mevzuat yürürlük bildirimi yapılacak." };
-    case "rg": return { a:`${t} tarihli ve ${e.adim.sayi||"…"} sayılı Resmî Gazete'de yayımlandı.`, b:"Mevzuat yürürlük bildirimi yapılacak." };
+    case "olur": return { a:`Bakan Oluru ${t} tarih ve ${e.adim.sayi||"…"} sayı ile imzalandı.`, b:"Mevzuat yürürlük bildirimi bekleniyor." };
+    case "rg": return { a:`${t} tarihli ve ${e.adim.sayi||"…"} sayılı Resmî Gazete'de yayımlandı.`, b:"Mevzuat yürürlük bildirimi bekleniyor." };
     case "yb": return { a:`Mevzuat yürürlük bildirimi ${t} tarihinde yapıldı.`, b:"Arşiv işlemleri bekleniyor." };
     case "tiade": return { a:`Taslak ${t} tarihinde ${yonelme(d.birimAd)} iade edildi.`, b:"Arşiv işlemleri bekleniyor." };
     case "geri": return { a:`Taslak ${t} tarihinde geri çekildi.`, b:"Arşiv işlemleri bekleniyor." };
@@ -497,9 +498,10 @@ function ciz(){
 /* ---------- ortak parçalar ---------- */
 function durumRozet(d){
   let s = `<span class="badge b-${d.durum}">${esc(DURUM[d.durum]||d.durum)}</span>`;
-  if(d.cb?.isaret) s += ` <span class="badge b-cb">Cumhurbaşkanlığında</span>`;
+  const gr = grupOf(d);
+  if(gr==="cb") s += ` <span class="badge b-cb">Cumhurbaşkanlığında</span>`;
+  if(gr==="yururlukte") s += ` <span class="badge" style="color:#fff;background:var(--ok);border-color:var(--ok)">Yürürlüğe konuldu</span> <span class="badge b-beklemede">Yürürlük bildirimi bekleniyor</span>`;
   const g = gecikme(d); if(g.var) s += ` <span class="badge b-gec">Gecikme</span>`;
-  if(ybBekliyor(d)) s += ` <span class="badge b-beklemede">Yürürlük bildirimi bekleniyor</span>`;
   if(d.arsivBekliyor && ["devam","beklemede"].includes(d.durum)) s += ` <span class="badge b-onay_uzman">Arşiv işlemleri bekliyor</span>`;
   if(d.kategori==="A1" && d.durum!=="arsiv" && gdfDurum(d)?.bekleniyor) s += ` <span class="badge b-onay_uzman">Form bekleniyor</span>`;
   if(d.raporGizle && d.kategori==="A1") s += ` <span class="badge b-gizli">Raporda gizli</span>`;
@@ -534,13 +536,16 @@ function gecikmeDetay(d){
   if(d.durum!=="arsiv" && d.cevapSonTarih && d.cevapSonTarih < bg) l.push(`Cevap son tarihi ${tarih(d.cevapSonTarih)}, ${gunFark(d.cevapSonTarih,bg)} gün geçti`);
   return l;
 }
-const GRUP = {
-  calisilan: d => d.durum==="devam" && !d.cb?.isaret,
-  beklemede: d => d.durum==="beklemede" && !d.cb?.isaret,
-  cb: d => !!d.cb?.isaret && ["devam","beklemede"].includes(d.durum),
-  onay: d => d.durum.startsWith("onay")
-};
-const GRUP_AD = { calisilan:"Çalışılan", beklemede:"Beklemede", cb:"Cumhurbaşkanlığında", onay:"Onay bekleyen" };
+function grupOf(d){
+  if(d.durum==="arsiv") return "arsiv";
+  if(d.durum.startsWith("onay")) return "onay";
+  if(nihaiBitti(d)) return "arsivBekleyen";
+  if(ybBekliyor(d)) return "yururlukte";
+  if(d.cb?.isaret) return "cb";
+  return d.durum==="beklemede" ? "beklemede" : "calisilan";
+}
+const GRUP_AD = { calisilan:"Çalışılan", beklemede:"Beklemede", cb:"Cumhurbaşkanlığında", yururlukte:"Yürürlüğe konulan", arsivBekleyen:"Arşiv işlemleri bekleyen", onay:"Onay bekleyen" };
+const GRUP = Object.fromEntries(Object.keys(GRUP_AD).map(g => [g, d => grupOf(d)===g]));
 function vPano(m, r){
   const dl = Object.values(S.dosyalar);
   const benim = [];
@@ -560,6 +565,8 @@ function vPano(m, r){
     <a href="#/dosyalar?d=calisilan"><b>${dl.filter(GRUP.calisilan).length}</b><span>Çalışılan</span></a>
     <a href="#/dosyalar?d=beklemede"><b>${dl.filter(GRUP.beklemede).length}</b><span>Beklemede</span></a>
     <a href="#/dosyalar?d=cb"><b>${dl.filter(GRUP.cb).length}</b><span>Cumhurbaşkanlığında</span></a>
+    <a href="#/dosyalar?d=yururlukte"><b>${dl.filter(GRUP.yururlukte).length}</b><span>Yürürlüğe konulan</span></a>
+    <a href="#/dosyalar?d=arsivBekleyen"><b>${dl.filter(GRUP.arsivBekleyen).length}</b><span>Arşiv işlemleri bekleyen</span></a>
     <a href="#/dosyalar?d=onay"><b>${dl.filter(GRUP.onay).length}</b><span>Onay bekleyen</span></a>
     <a href="#/dosyalar?d=gec"><b>${gecList.length}</b><span>Gecikmesi olan</span></a>
   </div>
@@ -567,7 +574,7 @@ function vPano(m, r){
   <h2>Gecikenler</h2>
   ${gecList.length ? `<div class="list">${gecList.map(d=>satirAciklama(d, `<div class="uyari">${gecikmeDetay(d).map(esc).join("<br>")}</div>`)).join("")}</div>`
     : `<div class="empty">Süresi geçmiş görüş ya da cevap tarihi yok.</div>`}
-  <h2>Açık dosyalar</h2><p class="hint" style="margin-top:-6px">Arşive alınmamış tüm dosyalar: çalışılan, beklemede, Cumhurbaşkanlığında ve onay bekleyen.</p>
+  <h2>Açık dosyalar</h2><p class="hint" style="margin-top:-6px">Arşive alınmamış tüm dosyalar.</p>
   <div class="tabs">${[["","Tümü",dl.length],...katSira.map(x=>[x,KATS[x],dl.filter(d=>d.kategori===x).length])].map(([kk,t,n])=>`<a href="#/pano${kk?"?k="+kk:""}" class="${k===kk?"on":""}">${kk?`<span class="kat k-${kk}">${kk}</span> `:""}${esc(t)} (${n})</a>`).join("")}</div>
   ${katSira.filter(x=>!k||x===k).map(x => { const l = aktif.filter(d=>d.kategori===x).sort((a,b)=>(b.gelisTarihi||"").localeCompare(a.gelisTarihi||""));
     if(!l.length) return "";
@@ -581,18 +588,20 @@ function rKisi(m){
   const satirlar = [...kisiler.map(k=>k.email), ...ekstra];
   const say = (e, f) => dl.filter(d=>d.atananEmail===e && f(d)).length;
   m.innerHTML = `<p><a href="#/raporlar">← Raporlar</a></p><h1>Kişi bazında dosyalar</h1><p class="sub">${tarih(bugun())} itibarıyla. Sayılara tıklayınca ilgili dosyalar listelenir.</p>
-  <div class="scroll"><table class="t"><thead><tr><th>Uzman yardımcısı</th><th class="n">Çalışılan</th><th class="n">Beklemede</th><th class="n">Cumhurbaşkanlığında</th><th class="n">Onay bekliyor</th><th class="n">Gecikmesi olan</th><th class="n">Arşiv</th><th></th></tr></thead>
+  <div class="scroll"><table class="t"><thead><tr><th>Uzman yardımcısı</th><th class="n">Çalışılan</th><th class="n">Beklemede</th><th class="n">Cumhurbaşkanlığında</th><th class="n">Yürürlüğe konulan</th><th class="n">Arşiv işlemleri bekleyen</th><th class="n">Onay bekliyor</th><th class="n">Gecikmesi olan</th><th class="n">Arşiv</th><th></th></tr></thead>
   <tbody>${satirlar.length ? satirlar.map(e=>`<tr>
     <td><a href="#/dosyalar?p=${encodeURIComponent(e)}">${esc(userName(e))}</a></td>
     <td class="n"><a href="#/dosyalar?p=${encodeURIComponent(e)}&d=calisilan">${say(e,GRUP.calisilan)}</a></td>
     <td class="n"><a href="#/dosyalar?p=${encodeURIComponent(e)}&d=beklemede">${say(e,GRUP.beklemede)}</a></td>
     <td class="n"><a href="#/dosyalar?p=${encodeURIComponent(e)}&d=cb">${say(e,GRUP.cb)}</a></td>
+    <td class="n"><a href="#/dosyalar?p=${encodeURIComponent(e)}&d=yururlukte">${say(e,GRUP.yururlukte)}</a></td>
+    <td class="n"><a href="#/dosyalar?p=${encodeURIComponent(e)}&d=arsivBekleyen">${say(e,GRUP.arsivBekleyen)}</a></td>
     <td class="n"><a href="#/dosyalar?p=${encodeURIComponent(e)}&d=onay">${say(e,d=>d.durum.startsWith("onay"))}</a></td>
     <td class="n"><a href="#/dosyalar?p=${encodeURIComponent(e)}&d=gec">${say(e,d=>gecikme(d).var)}</a></td>
     <td class="n" data-arsiv="${esc(e)}">…</td>
     <td><button class="btn sm" data-tur="${esc(e)}">Türe göre</button></td></tr>
-    <tr hidden data-turrow="${esc(e)}"><td colspan="8">${turKirilim(dl.filter(d=>d.atananEmail===e))}</td></tr>`).join("")
-    : `<tr><td colspan="8" class="sub">Henüz uzman yardımcısı tanımlanmadı.</td></tr>`}</tbody></table></div>`;
+    <tr hidden data-turrow="${esc(e)}"><td colspan="10">${turKirilim(dl.filter(d=>d.atananEmail===e))}</td></tr>`).join("")
+    : `<tr><td colspan="10" class="sub">Henüz uzman yardımcısı tanımlanmadı.</td></tr>`}</tbody></table></div>`;
   m.querySelectorAll("[data-tur]").forEach(b => b.onclick = () => { const r = m.querySelector(`[data-turrow="${CSS.escape(b.dataset.tur)}"]`); r.hidden = !r.hidden; });
   m.querySelectorAll("[data-arsiv]").forEach(async td => {
     try { const c = await getCountFromServer(query(collection(db,"dosyalar"), where("atananEmail","==",td.dataset.arsiv), where("durum","==","arsiv")));
@@ -618,7 +627,7 @@ async function vDosyalar(m, r, benim){
   if(k) l = l.filter(x=>x.kategori===k);
   if(p) l = l.filter(x=>x.atananEmail===p);
   const df = { aktif:x=>x.durum!=="arsiv", calisilan:GRUP.calisilan, devam:x=>x.durum==="devam", beklemede:GRUP.beklemede, cb:GRUP.cb,
-    onay:GRUP.onay, gec:x=>gecikme(x).var, yb:x=>ybBekliyor(x), form:x=>x.kategori==="A1" && x.durum!=="arsiv" && !!gdfDurum(x)?.bekleniyor, arsiv:x=>x.durum==="arsiv", hepsi:()=>true }[barkodArama && d==="aktif" ? "hepsi" : d] || (()=>true);
+    onay:GRUP.onay, yururlukte:GRUP.yururlukte, arsivBekleyen:GRUP.arsivBekleyen, gec:x=>gecikme(x).var, yb:x=>ybBekliyor(x), form:x=>x.kategori==="A1" && x.durum!=="arsiv" && !!gdfDurum(x)?.bekleniyor, arsiv:x=>x.durum==="arsiv", hepsi:()=>true }[barkodArama && d==="aktif" ? "hepsi" : d] || (()=>true);
   l = l.filter(df);
   const eslesme = {};
   if(ara){ const a = norm(ara); l = l.filter(x => { const yer = aramaYeri(x, a); if(yer){ eslesme[x.id] = yer; return true; } return false; }); }
@@ -629,7 +638,7 @@ async function vDosyalar(m, r, benim){
   m.innerHTML = `<h1>${esc(baslik)}</h1><p class="sub">${l.length} dosya</p>
     <div class="tabs">${[["","Tümü"],...Object.entries(KATS)].map(([kk,t])=>`<a href="${link({k:kk})}" class="${k===kk?"on":""}">${kk?`<span class="kat k-${kk}">${kk}</span> `:""}${esc(t)}</a>`).join("")}</div>
     <div class="filters"><input type="search" id="fq" placeholder="Ad, dosya no, birim, barkod ya da sayı ara" value="${esc(ara)}">
-      <select id="fd">${[["aktif","Tüm açık dosyalar"],["calisilan","Çalışılan"],["beklemede","Beklemede"],["cb","Cumhurbaşkanlığında"],["onay","Onay bekliyor"],["gec","Gecikmesi olan"],["form","Görüş değerlendirme formu bekleniyor (A1)"],["yb","Yürürlük bildirimi bekleniyor (A1)"],["arsiv","Arşiv"],["hepsi","Aktif + arşiv"]].map(([v,t])=>`<option value="${v}" ${v===d?"selected":""}>${t}</option>`).join("")}</select>
+      <select id="fd">${[["aktif","Tüm açık dosyalar"],["calisilan","Çalışılan"],["beklemede","Beklemede"],["cb","Cumhurbaşkanlığında"],["onay","Onay bekliyor"],["gec","Gecikmesi olan"],["form","Görüş değerlendirme formu bekleniyor (A1)"],["yururlukte","Yürürlüğe konulan (yürürlük bildirimi bekleniyor)"],["arsivBekleyen","Arşiv işlemleri bekleyen"],["arsiv","Arşiv"],["hepsi","Aktif + arşiv"]].map(([v,t])=>`<option value="${v}" ${v===d?"selected":""}>${t}</option>`).join("")}</select>
       ${kisiSec || "<span></span>"}</div>
     ${barkodArama && d==="aktif" ? `<p class="hint">Barkod araması: arşivdeki dosyalar da tarandı.</p>` : ""}
     ${l.length ? `<div class="list">${l.slice(0,300).map(x => ara && eslesme[x.id] && eslesme[x.id]!=="Dosya adı" ? satir(x).replace('<div class="r">',`<div class="r"><span class="badge b-gizli">Bulunduğu yer: ${esc(eslesme[x.id])}</span>`) : satir(x)).join("")}</div>${l.length>300?`<p class="sub">İlk 300 dosya gösteriliyor, aramayı daraltın.</p>`:""}`
@@ -721,8 +730,8 @@ async function vDosya(m, r){
 }
 function nihaiListe(d){
   const l = (d.sonucAdim||[]).map(x=>({ ...x, ad:NIHAI[x.tip] }));
-  if(d.cb?.isaret) l.push({ id:"cb", tip:"teklif", tarih:d.cb.tarih||"", sayi:d.cb.sayi||"", ad:"Teklif yazısı ile Cumhurbaşkanlığına gönderildi" });
-  return l.sort((a,b)=>(a.tarih||"").localeCompare(b.tarih||""));
+  if(d.cb?.isaret) l.push({ id:"cb", tip:"teklif", tarih:d.cb.tarih||"", sayi:d.cb.sayi||"", not:d.cb.not||"", ad:"Teklif yazısı ile Cumhurbaşkanlığına gönderildi" });
+  return l.sort((a,b)=>(a.tarih||"").localeCompare(b.tarih||"") || (NIHAI_SIRA[a.tip]||0)-(NIHAI_SIRA[b.tip]||0) || (a.zaman||"").localeCompare(b.zaman||""));
 }
 const ybBekliyor = d => d.kategori==="A1" && ["devam","beklemede"].includes(d.durum) && (d.sonucAdim||[]).some(x=>x.tip==="olur"||x.tip==="rg") && !(d.sonucAdim||[]).some(x=>NIHAI_SON.includes(x.tip));
 const nihaiBitti = d => (d.sonucAdim||[]).some(x=>NIHAI_SON.includes(x.tip));
@@ -740,9 +749,9 @@ function nihaiHtml(d, ew){
   }
   return `<div class="panel">
     ${bitti && ["devam","beklemede"].includes(d.durum) ? `<p style="margin-top:0;color:var(--onay)"><b>Dosya arşiv işlemleri için bekliyor.</b>${isMgr()?" Kontrol edip yukarıdan \"Tamamlandı\" diyebilirsiniz.":""}</p>` : ""}
-    ${l.length ? `<ul class="tl">${l.map(x=>`<li><b>${esc(x.ad)}</b> – ${tarih(x.tarih)||"tarih girilmedi"}${x.sayi?` – <span class="num">${esc(x.sayi)}</span>`:""}
+    ${l.length ? `<ul class="tl">${l.map(x=>`<li><b>${esc(x.ad)}</b> – ${tarih(x.tarih)||"tarih girilmedi"}${x.sayi?` – <span class="num">${esc(x.sayi)}</span>`:""}${x.not?`<br>${esc(x.not)}`:""}
       ${x.tip==="teklif" && !x.sayi && ew ? ` <button class="btn sm" data-x="cb">Tarih ve sayıyı gir</button>` : ""}
-      ${ew ? ` <button class="btn sm danger" data-x="nihaisil" data-id="${x.id}">Sil</button>` : ""}</li>`).join("")}</ul>` : `<p class="sub" style="margin-top:0">Henüz nihai işlem yok.</p>`}
+      ${ew ? ` <button class="btn sm" data-x="${x.tip==="teklif"?"cb":"nihaiduz"}" data-id="${x.id}">Düzelt</button> <button class="btn sm danger" data-x="nihaisil" data-id="${x.id}">Sil</button>` : ""}</li>`).join("")}</ul>` : `<p class="sub" style="margin-top:0">Henüz nihai işlem yok.</p>`}
     ${btn.length?`<div class="row" style="margin-top:10px">${btn.join("")}</div>`:""}</div>`;
 }
 function gdfHtml(d, ew){
@@ -755,8 +764,8 @@ function gdfHtml(d, ew){
   }
   return `<div class="panel">
     <p style="margin-top:0"><b>${du ? esc(du.metin) : "İstem gönderilmedi"}</b>${d.birimAd?` <span class="sub">· Karşı taraf: ${esc(d.birimAd)}</span>`:""}</p>
-    ${l.length ? `<ul class="tl">${l.map(g=>`<li><b>${GDF_AD(g)}</b> – ${tarih(g.tarih)}${g.sayi?` – <span class="num">${esc(g.sayi)}</span>`:""}<br><small>${esc(g.ekleyen||"")}</small>
-      ${ew?` <button class="btn sm danger" data-x="gdfsil" data-id="${g.id}" data-k="${g.kaynak}">Sil</button>`:""}</li>`).join("")}</ul>` : ""}
+    ${l.length ? `<ul class="tl">${l.map(g=>`<li><b>${GDF_AD(g)}</b> – ${tarih(g.tarih)}${g.sayi?` – <span class="num">${esc(g.sayi)}</span>`:""}${g.not?`<br>${esc(g.not)}`:""}<br><small>${esc(g.ekleyen||"")}</small>
+      ${ew?` <button class="btn sm" data-x="gdfduz" data-id="${g.id}">Düzelt</button> <button class="btn sm danger" data-x="gdfsil" data-id="${g.id}" data-k="${g.kaynak}">Sil</button>`:""}</li>`).join("")}</ul>` : ""}
     ${btn.length?`<div class="row" style="margin-top:10px">${btn.join("")}</div>`:""}</div>`;
 }
 function turHtml(d,t,ew){
@@ -832,14 +841,15 @@ const DX = {
   async arsivcik(d){ if(!confirm("Dosya arşivden çıkarılıp 'Devam ediyor' durumuna alınsın mı?")) return;
     try{ await dosyaGuncelle(d, { durum:"devam" }, "Arşivden çıkarıldı"); if(S.arsiv) delete S.arsiv[d.id]; }catch(x){ hata(x); } },
   cb(d){
-    if(d.cb?.isaret && d.cb.sayi){ if(!confirm("Cumhurbaşkanlığı işareti kaldırılsın mı?")) return;
+    if(d.cb?.isaret && d.cb.sayi && arguments[1]?.id!=="cb"){ if(!confirm("Cumhurbaşkanlığı işareti kaldırılsın mı?")) return;
       return dosyaGuncelle(d, { cb:{ ...d.cb, isaret:false } }, "Cumhurbaşkanlığı işareti kaldırıldı").catch(hata); }
     const m = modal(`<h2>Cumhurbaşkanlığına gönderildi</h2><form><label class="f"><span>Teklif yazısının tarihi</span><input type="date" name="t" value="${esc(d.cb?.tarih||bugun())}" required></label>
-      <label class="f"><span>Teklif yazısının sayısı</span><input type="text" name="s" value="${esc(d.cb?.sayi||"")}" required></label></form>
+      <label class="f"><span>Teklif yazısının sayısı</span><input type="text" name="s" value="${esc(d.cb?.sayi||"")}" required></label>
+      <label class="f"><span>Açıklama (isteğe bağlı)</span><textarea name="n" style="min-height:50px">${esc(d.cb?.not||"")}</textarea></label></form>
       <div class="foot"><button class="btn" data-k>Vazgeç</button><button class="btn p" data-ok>Kaydet</button></div>`);
     m.querySelector("[data-k]").onclick=kapat;
     m.querySelector("[data-ok]").onclick = async () => { const v = fd(m); if(!v.t || !v.s.trim()) return toast("Tarih ve sayı gerekli.");
-      const cb = { isaret:true, tarih:v.t, sayi:v.s.trim() }; const patch = { cb };
+      const cb = { isaret:true, tarih:v.t, sayi:v.s.trim(), not:(v.n||"").trim() }; const patch = { cb };
       if(d.cb?.isaret && d.raporDuzeltme && d.raporDuzeltme.anahtar===olayAnahtar(d)) patch.raporDuzeltme = { ...d.raporDuzeltme, anahtar:olayAnahtar({ ...d, cb }) };
       try{ await dosyaGuncelle(d, patch, d.cb?.isaret ? `Teklif yazısı bilgileri girildi (${tarih(v.t)}, ${v.s.trim()})` : `Cumhurbaşkanlığına gönderildi (${tarih(v.t)}, ${v.s.trim()})`); kapat(); }catch(x){ hata(x); } };
   },
@@ -902,13 +912,14 @@ const DX = {
     const bas = NIHAI[ds.tip];
     const etiket = { rg:["Resmî Gazete tarihi","Resmî Gazete sayısı"], olur:["Olur tarihi","Olur sayısı"], olurh:["Hazırlandığı tarih",""] }[ds.tip] || ["Tarih","Yazının sayısı / barkodu"];
     const m = modal(`<h2>${bas}</h2><form><div class="grid2"><label class="f"><span>${etiket[0]}</span><input type="date" name="t" value="${bugun()}" required></label>
-      ${etiket[1]?`<label class="f"><span>${etiket[1]}</span><input type="text" name="s"></label>`:`<input type="hidden" name="s" value="">`}</div></form>
+      ${etiket[1]?`<label class="f"><span>${etiket[1]}</span><input type="text" name="s"></label>`:`<input type="hidden" name="s" value="">`}</div>
+      <label class="f"><span>Açıklama (isteğe bağlı)</span><textarea name="n" style="min-height:50px"></textarea></label></form>
       ${NIHAI_SON.includes(ds.tip)?`<p class="hint">Kaydedince yöneticilere, Atayan'a ve dosyanın uzman yardımcısına "Dosya arşiv işlemleri için bekliyor" bildirimi gider.</p>`:""}
       <div class="foot"><button class="btn" data-k>Vazgeç</button><button class="btn p" data-ok>Kaydet</button></div>`);
     m.querySelector("[data-k]").onclick = kapat;
     m.querySelector("[data-ok]").onclick = async () => { const v = fd(m); if(!v.t) return toast("Tarih gerekli.");
       if(ds.tip!=="olurh" && !v.s.trim() && !confirm("Sayı girmeden kaydedilsin mi?")) return;
-      const x = { id:uid(), tip:ds.tip, tarih:v.t, sayi:v.s.trim(), ekleyen:myName(), zaman:simdi() };
+      const x = { id:uid(), tip:ds.tip, tarih:v.t, sayi:v.s.trim(), not:(v.n||"").trim(), ekleyen:myName(), zaman:simdi() };
       const son = NIHAI_SON.includes(ds.tip);
       try{ await dosyaGuncelle(d, { sonucAdim:[...(d.sonucAdim||[]), x], ...(son?{ arsivBekliyor:true }:{}) }, `${bas} (${tarih(v.t)}${v.s.trim()?", "+v.s.trim():""})`);
         if(ds.tip==="olur" || ds.tip==="rg") await bildir([d.atananEmail, ...yoneticiler()], "Mevzuat yürürlük bildirimi hazırlanacak", `${d.dosyaNo} – ${d.ad}\n${bas} (${tarih(v.t)}${v.s.trim()?", "+v.s.trim():""})`, d.id);
@@ -926,13 +937,29 @@ const DX = {
     const bas = { istem:"Görüş değerlendirme istemi gönder", form:"Görüş değerlendirme formu geldi", iade:"Görüş değerlendirme formu iade edildi" }[ds.tip];
     const m = modal(`<h2>${bas}</h2>${d.birimAd?`<p class="sub">${ds.tip==="form"?"Gönderen":"Gönderilen"}: ${esc(d.birimAd)}</p>`:""}<form>
       <div class="grid2"><label class="f"><span>Yazının tarihi</span><input type="date" name="t" value="${bugun()}" required></label>
-      <label class="f"><span>Yazının sayısı / barkodu</span><input type="text" name="s"></label></div></form>
+      <label class="f"><span>Yazının sayısı / barkodu</span><input type="text" name="s"></label></div>
+      <label class="f"><span>Açıklama (isteğe bağlı)</span><textarea name="n" style="min-height:50px"></textarea></label></form>
       <div class="foot"><button class="btn" data-k>Vazgeç</button><button class="btn p" data-ok>Kaydet</button></div>`);
     m.querySelector("[data-k]").onclick = kapat;
     m.querySelector("[data-ok]").onclick = async () => { const v = fd(m); if(!v.t) return toast("Tarih gerekli.");
       if(!v.s.trim() && !confirm("Sayı girmeden kaydedilsin mi?")) return;
-      const g = { id:uid(), tip:ds.tip, tarih:v.t, sayi:v.s.trim(), ekleyen:myName(), zaman:simdi() };
+      const g = { id:uid(), tip:ds.tip, tarih:v.t, sayi:v.s.trim(), not:(v.n||"").trim(), ekleyen:myName(), zaman:simdi() };
       try{ await dosyaGuncelle(d, { gdf:[...(d.gdf||[]), g] }, `${bas} (${tarih(v.t)}${v.s.trim()?", "+v.s.trim():""})`); kapat(); }catch(x){ hata(x); } };
+  },
+  gdfduz(d, ds){
+    const g = gdfListe(d).find(x=>x.id===ds.id); if(!g) return;
+    kayitDuzeltModal(`${GDF_AD(g)} – düzelt`, g, true, async v => {
+      const patch = g.kaynak==="adim"
+        ? { adimlar:(d.adimlar||[]).map(a => a.id!==g.id ? a : { ...a, tarih:v.t, barkod:v.s, not:v.n }) }
+        : { gdf:(d.gdf||[]).map(x => x.id!==g.id ? x : { ...x, tarih:v.t, sayi:v.s, not:v.n }) };
+      await dosyaGuncelle(d, patch, `Görüş değerlendirme kaydı düzeltildi: ${GDF_AD(g)} (${tarih(v.t)}${v.s?", "+v.s:""})`);
+    });
+  },
+  nihaiduz(d, ds){
+    const x = (d.sonucAdim||[]).find(y=>y.id===ds.id); if(!x) return;
+    kayitDuzeltModal(`${NIHAI[x.tip]} – düzelt`, x, x.tip!=="olurh", async v => {
+      await dosyaGuncelle(d, { sonucAdim:d.sonucAdim.map(y => y.id!==x.id ? y : { ...y, tarih:v.t, sayi:v.s, not:v.n }) }, `Nihai işlem düzeltildi: ${NIHAI[x.tip]} (${tarih(v.t)}${v.s?", "+v.s:""})`);
+    });
   },
   async gdfsil(d, ds){
     const g = gdfListe(d).find(x=>x.id===ds.id); if(!g || !confirm(`"${GDF_AD(g)} – ${tarih(g.tarih)}" kaydı silinsin mi?`)) return;
@@ -948,6 +975,16 @@ async function turBittiBildir(d, eskiTur, yeniTur){
   const bl = yeniTur.birimler, arti = bl.filter(b=>b.sonuc==="+").length;
   await bildir([d.atananEmail, ...yoneticiler()], "Görüş süreci tamamlandı",
     `${d.dosyaNo} – ${d.ad}\n${yeniTur.tip==="dis"?"Dış":"İç"} görüş turu (${tarih(yeniTur.tarih)}): ${bl.length} yerin tamamı cevaplandı, ${arti} yerden öneri geldi.`, d.id);
+}
+function kayitDuzeltModal(baslik, k, sayiVar, kaydet){
+  const m = modal(`<h2>${esc(baslik)}</h2><form>
+    <div class="grid2"><label class="f"><span>Tarih</span><input type="date" name="t" value="${esc(k.tarih||"")}" required></label>
+    ${sayiVar?`<label class="f"><span>Sayı / barkod</span><input type="text" name="s" value="${esc(k.sayi||k.barkod||"")}"></label>`:`<input type="hidden" name="s" value="">`}</div>
+    <label class="f"><span>Açıklama (isteğe bağlı)</span><textarea name="n" style="min-height:50px">${esc(k.not||"")}</textarea></label></form>
+    <div class="foot"><button class="btn" data-k>Vazgeç</button><button class="btn p" data-ok>Kaydet</button></div>`);
+  m.querySelector("[data-k]").onclick = kapat;
+  m.querySelector("[data-ok]").onclick = async () => { const v = fd(m); if(!v.t) return toast("Tarih gerekli.");
+    try{ await kaydet({ t:v.t, s:(v.s||"").trim(), n:(v.n||"").trim() }); kapat(); toast("Düzeltildi"); }catch(x){ hata(x); } };
 }
 function retModal(d, kim){
   const m = modal(`<h2>Onayı reddet</h2><form><label class="f"><span>Gerekçe</span><textarea name="g" required placeholder="Örn. Görüş değerlendirme formu henüz gelmedi."></textarea></label></form>
@@ -970,7 +1007,7 @@ function turModal(d, mevcut){
     <label class="f"><span>Yazı tarihi</span><input type="date" name="tarih" value="${bugun()}" required></label>
     <label class="f"><span>Son tarih</span><input type="date" name="son" required></label></div>`}
     <span style="font-size:13px;font-weight:600">Görüşe açılan yerler</span>
-    <div class="row" style="margin:4px 0 6px"><input type="search" id="ta" placeholder="Ara" style="flex:1"><label class="row" style="font-size:13px"><input type="checkbox" id="tg"> Tüm grupları göster</label></div>
+    <div class="row" style="margin:4px 0 6px"><input type="search" id="ta" placeholder="Ara" style="flex:1"><label class="row" style="font-size:13px"><input type="checkbox" id="tg"> Diğer grupları da göster</label></div>
     <div class="pick" id="tp">${liste()}</div>
     <details style="margin-top:10px"><summary>Listede olmayan bir yer ekle</summary>
       <div class="grid2" style="margin-top:8px"><label class="f"><span>Adı</span><input type="text" id="ya"></label><label class="f"><span>Kısaltma</span><input type="text" id="yk"></label></div>
@@ -979,10 +1016,11 @@ function turModal(d, mevcut){
   </form><div class="foot"><button class="btn" data-k>Vazgeç</button><button class="btn p" data-ok>${mevcut?"Ekle":"Görüşe aç"}</button></div>`);
   const tt = m.querySelector("#tt"), tg = m.querySelector("#tg"), ta = m.querySelector("#ta");
   const suz = () => { const tip = mevcut ? mevcut.tip : tt.value; const hepsi = tg.checked; const a = norm(ta.value);
-    const acik = g => hepsi || (tip==="ic" ? ["İç birimler","Hukukçular"] : ["Dış kurumlar"]).includes(g);
+    const acik = g => hepsi || (tip==="ic" ? ["İç birimler"] : ["Dış kurumlar"]).includes(g);
     m.querySelectorAll("#tp label").forEach(l => l.hidden = !(acik(l.dataset.gr) && norm(l.textContent).includes(a)) && !l.querySelector("input").checked);
     m.querySelectorAll("#tp .g").forEach(g => g.hidden = !acik(g.dataset.g)); };
-  if(tt) tt.onchange = suz; tg.onchange = suz; ta.oninput = suz; suz();
+  const ytSec = () => { const tip = mevcut ? mevcut.tip : tt.value; m.querySelector("#yt").value = tip==="dis" ? "dis" : "ic"; };
+  if(tt) tt.onchange = () => { suz(); ytSec(); }; tg.onchange = suz; ta.oninput = suz; suz(); ytSec();
   m.querySelector("#yekle").onclick = async () => {
     const ad = m.querySelector("#ya").value.trim(), kisa = m.querySelector("#yk").value.trim(), tur = m.querySelector("#yt").value;
     if(!ad) return toast("Adı yazın.");
@@ -1104,16 +1142,17 @@ function vRaporlar(m){
 }
 function vRapor(m, r){ ({ haftalik:rHaftalik, genel:rGenel, donem:rDonem, kisi:rKisi }[r.p[0]] || vRaporlar)(m, r); }
 
-function raporBolumleri(dosyalar, cbAyri){
-  const devam = dosyalar.filter(d => (d.durum==="devam" || d.durum.startsWith("onay")) && !(cbAyri && d.cb?.isaret));
-  const bek = dosyalar.filter(d => d.durum==="beklemede" && !(cbAyri && d.cb?.isaret));
-  const cb = cbAyri ? dosyalar.filter(d => d.cb?.isaret && d.durum!=="arsiv") : [];
+function raporBolumleri(dosyalar, haftalik){
   const srt = l => l.sort((a,b)=>(a.gelisTarihi||"").localeCompare(b.gelisTarihi||""));
-  return [
-    { baslik:"ÇALIŞILAN TASLAKLAR", l:srt(devam), cols:["Sıra No","Mevzuat adı","Açıklamalar","Beklenen İşlem"] },
-    { baslik:"BEKLEMEDE OLAN TASLAKLAR", l:srt(bek), cols:["Sıra No","Mevzuat adı","Hangi aşamada olduğu","Beklenen İşlem"] },
-    ...(cbAyri ? [{ baslik:"CUMHURBAŞKANLIĞINA GÖNDERİLEN TASLAKLAR", l:srt(cb), cols:["Sıra No","Mevzuat adı","Hangi aşamada olduğu"], cb:true }] : [])
+  const g = k => srt(dosyalar.filter(GRUP[k]));
+  const b = [
+    { baslik:"ÇALIŞILAN TASLAKLAR", l:g("calisilan"), cols:["Sıra No","Mevzuat adı","Açıklamalar","Beklenen İşlem"] },
+    { baslik:"BEKLEMEDE OLAN TASLAKLAR", l:g("beklemede"), cols:["Sıra No","Mevzuat adı","Hangi aşamada olduğu","Beklenen İşlem"] },
+    { baslik:"CUMHURBAŞKANLIĞINA GÖNDERİLEN TASLAKLAR", l:g("cb"), cols:["Sıra No","Mevzuat adı","Hangi aşamada olduğu"], cb:true }
   ];
+  const yur = g("yururlukte");
+  if(yur.length && !haftalik) b.push({ baslik:"YÜRÜRLÜĞE KONULAN TASLAKLAR", l:yur, cols:["Sıra No","Mevzuat adı","Açıklamalar","Beklenen İşlem"] });
+  return b;
 }
 function cbAsama(d){ const ev = olaylar(d); const son = ev[ev.length-1]; const rm = raporMetni(d);
   if(rm.duzeltildi) return rm.aciklama; return son.tip==="cb" ? "Raportör incelemesinde." : olayMetni(d, son).a; }
@@ -1154,19 +1193,18 @@ function rHaftalik(m){
 }
 async function rGenel(m, r){
   const q = r.q; const katlar = q.k ? q.k.split(",") : Object.keys(KATS); const kisi = q.p||"";
-  const durumlar = q.d ? q.d.split(",") : ["devam","beklemede","cb","onay"];
-  const l = Object.values(S.dosyalar).filter(d => !d.deneme && katlar.includes(d.kategori) && (!kisi || d.atananEmail===kisi) &&
-    ((durumlar.includes("devam") && d.durum==="devam" && !d.cb?.isaret) || (durumlar.includes("beklemede") && d.durum==="beklemede" && !d.cb?.isaret) ||
-     (durumlar.includes("cb") && d.cb?.isaret) || (durumlar.includes("onay") && d.durum.startsWith("onay") && !d.cb?.isaret)));
-  const bolum = k => { const kl = l.filter(d=>d.kategori===k); const b = raporBolumleri(kl, true).filter(x => x.l.length);
+  const RG = ["calisilan","beklemede","cb","yururlukte"];
+  const durumlar = q.d ? q.d.split(",") : RG;
+  const l = Object.values(S.dosyalar).filter(d => !d.deneme && katlar.includes(d.kategori) && (!kisi || d.atananEmail===kisi) && durumlar.includes(grupOf(d)));
+  const bolum = k => { const kl = l.filter(d=>d.kategori===k); const b = raporBolumleri(kl).filter(x => x.l.length);
     b.forEach(x => { x.baslik = x.baslik.replace("TASLAKLAR","DOSYALAR"); }); return b; };
   m.innerHTML = `<p><a href="#/raporlar">← Raporlar</a></p><h1>Genel durum raporu</h1>
     <div class="panel"><div class="grid2"><div><b>Kategoriler</b><div class="row">${Object.keys(KATS).map(k=>`<label class="row"><input type="checkbox" name="k" value="${k}" ${katlar.includes(k)?"checked":""}> <span class="kat k-${k}">${k}</span></label>`).join("")}</div></div>
-    <div><b>Durumlar</b><div class="row">${[["devam","Devam"],["beklemede","Beklemede"],["cb","Cumhurbaşkanlığında"],["onay","Onay bekliyor"]].map(([v,t])=>`<label class="row"><input type="checkbox" name="d" value="${v}" ${durumlar.includes(v)?"checked":""}> ${t}</label>`).join("")}</div></div></div>
+    <div><b>Durumlar</b><div class="row">${RG.map(v=>[v,GRUP_AD[v]]).map(([v,t])=>`<label class="row"><input type="checkbox" name="d" value="${v}" ${durumlar.includes(v)?"checked":""}> ${t}</label>`).join("")}</div></div></div>
     <label class="f" style="margin-top:10px;max-width:360px"><span>Kişi</span><select id="gp"><option value="">Tüm ekip</option>${aktifKullanicilar().filter(u=>u.rol==="uzman").map(u=>`<option value="${esc(u.email)}" ${u.email===kisi?"selected":""}>${esc(u.ad)}</option>`).join("")}</select></label>
     <div class="row"><button class="btn" id="uyg">Uygula</button><button class="btn p" id="indir">Word olarak indir</button></div></div>
-    <h2>Özet</h2><div class="scroll"><table class="t"><thead><tr><th>Kategori</th><th class="n">Devam</th><th class="n">Beklemede</th><th class="n">Cumhurbaşkanlığında</th><th class="n">Onay bekliyor</th><th class="n">Toplam</th></tr></thead><tbody>
-    ${katlar.map(k=>{ const kl=l.filter(d=>d.kategori===k); const c=[kl.filter(d=>d.durum==="devam"&&!d.cb?.isaret).length, kl.filter(d=>d.durum==="beklemede"&&!d.cb?.isaret).length, kl.filter(d=>d.cb?.isaret).length, kl.filter(d=>d.durum.startsWith("onay")&&!d.cb?.isaret).length];
+    <h2>Özet</h2><div class="scroll"><table class="t"><thead><tr><th>Kategori</th>${RG.map(g=>`<th class="n">${GRUP_AD[g]}</th>`).join("")}<th class="n">Toplam</th></tr></thead><tbody>
+    ${katlar.map(k=>{ const kl=l.filter(d=>d.kategori===k); const c=RG.map(g=>kl.filter(GRUP[g]).length);
       return `<tr><td><span class="kat k-${k}">${k}</span> ${KATS[k]}</td>${c.map(x=>`<td class="n">${x}</td>`).join("")}<td class="n"><b>${kl.length}</b></td></tr>`; }).join("")}</tbody></table></div>
     ${katlar.map(k=>`<h2><span class="kat k-${k}">${k}</span> ${KATS[k]}</h2>${bolum(k).length ? onizleme(bolum(k), true) : `<p class="sub">Dosya yok.</p>`}`).join("")}`;
   duzeltmeBagla(m);
