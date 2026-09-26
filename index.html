@@ -1,0 +1,1162 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mevzuat Takip Sistemi</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#16324A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Mevzuat Takip">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"></script>
+<style>
+:root{
+  --ink:#16324A; --ink2:#2B4A63; --paper:#F5F7F8; --card:#FFFFFF; --line:#D8DFE3; --muted:#5E6E79;
+  --a1:#3B5BB5; --a2:#12897A; --b:#B07A12; --c:#7A62AD;
+  --devam:#2563A6; --bekle:#A8690F; --onay:#6B46C1; --arsiv:#6B7280; --gec:#B42318; --ok:#1E7B45;
+  --focus:#1D6FD1;
+  font-family:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:15px; line-height:1.45; color:var(--ink); background:var(--paper);
+  -webkit-text-size-adjust:100%;
+}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;padding-bottom:env(safe-area-inset-bottom)}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--ink2)}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+header.top{position:sticky;top:0;z-index:20;background:var(--ink);color:#fff;display:flex;align-items:center;gap:12px;
+  padding:calc(env(safe-area-inset-top) + 10px) 16px 10px}
+header.top .brand{font-weight:700;letter-spacing:.2px;flex:1;display:flex;align-items:center;gap:10px;color:#fff;text-decoration:none}
+.bars{display:flex;gap:3px}.bars i{display:block;width:5px;height:18px;border-radius:2px}
+header.top button{background:transparent;border:0;color:#fff;cursor:pointer;padding:6px;border-radius:6px;position:relative}
+header.top button:hover{background:rgba(255,255,255,.12)}
+.dot{position:absolute;top:0;right:0;background:var(--gec);color:#fff;font-size:11px;border-radius:9px;padding:0 5px;min-width:18px;text-align:center}
+.layout{display:grid;grid-template-columns:210px 1fr;min-height:calc(100vh - 52px)}
+nav.side{border-right:1px solid var(--line);padding:14px 8px;background:#EEF2F4}
+nav.side a{display:block;padding:9px 12px;border-radius:7px;text-decoration:none;color:var(--ink);font-weight:500}
+nav.side a.on{background:var(--ink);color:#fff}
+nav.side .sep{height:1px;background:var(--line);margin:10px 6px}
+main{padding:20px 24px 90px;max-width:1200px;width:100%}
+nav.bottom{display:none}
+@media (max-width:820px){
+  .layout{grid-template-columns:1fr}
+  nav.side{display:none}
+  main{padding:14px 12px 90px}
+  nav.bottom{display:flex;position:fixed;bottom:0;left:0;right:0;z-index:20;background:#fff;border-top:1px solid var(--line);
+    padding:6px 4px calc(6px + env(safe-area-inset-bottom))}
+  nav.bottom a{flex:1;text-align:center;text-decoration:none;color:var(--muted);font-size:12px;padding:4px 0;font-weight:500}
+  nav.bottom a.on{color:var(--ink);font-weight:700}
+  nav.bottom a b{display:block;font-size:18px;line-height:1.2}
+}
+h1{font-size:24px;margin:0 0 4px;font-weight:700;letter-spacing:-.2px}
+h2{font-size:18px;margin:26px 0 10px;font-weight:700}
+h3{font-size:15px;margin:18px 0 8px;font-weight:700}
+.sub{color:var(--muted);margin:0 0 18px}
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:#fff;border-radius:7px;padding:7px 12px;cursor:pointer;font-weight:500;text-decoration:none;color:var(--ink)}
+.btn:hover{border-color:var(--ink2)}
+.btn.p{background:var(--ink);color:#fff;border-color:var(--ink)}
+.btn.p:hover{background:var(--ink2)}
+.btn.danger{color:var(--gec);border-color:#E7B7B2}
+.btn.sm{padding:4px 9px;font-size:13px}
+.btn:disabled{opacity:.5;cursor:default}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.sp{flex:1}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:820px){.grid2{grid-template-columns:1fr}}
+label.f{display:block;margin-bottom:12px}
+label.f>span{display:block;font-size:13px;font-weight:600;margin-bottom:4px;color:var(--ink2)}
+input[type=text],input[type=date],input[type=email],input[type=search],select,textarea{width:100%;border:1px solid var(--line);border-radius:7px;padding:8px 10px;background:#fff}
+textarea{min-height:70px;resize:vertical}
+.hint{font-size:12.5px;color:var(--muted);margin-top:3px}
+.err{color:var(--gec);font-size:13.5px;margin:6px 0}
+.badge{display:inline-block;font-size:12px;font-weight:600;border-radius:5px;padding:1px 7px;border:1px solid currentColor;white-space:nowrap}
+.b-devam{color:var(--devam)}.b-beklemede{color:var(--bekle)}.b-onay_uzman,.b-onay_yonetici{color:var(--onay)}.b-arsiv{color:var(--arsiv)}
+.b-gec{color:#fff;background:var(--gec);border-color:var(--gec)}.b-cb{color:#fff;background:var(--ink2);border-color:var(--ink2)}
+.b-gizli{color:var(--muted)}
+.kat{display:inline-block;font-weight:700;font-size:12px;color:#fff;border-radius:4px;padding:1px 6px}
+.k-A1{background:var(--a1)}.k-A2{background:var(--a2)}.k-B{background:var(--b)}.k-C{background:var(--c)}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:12px;overflow-x:auto}
+.tabs a{padding:8px 12px;text-decoration:none;color:var(--muted);font-weight:600;border-bottom:3px solid transparent;white-space:nowrap}
+.tabs a.on{color:var(--ink);border-color:var(--ink)}
+.filters{display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;margin-bottom:12px}
+@media (max-width:820px){.filters{grid-template-columns:1fr 1fr}.filters>:first-child{grid-column:1/-1}}
+.list{display:flex;flex-direction:column;gap:6px}
+.item{display:grid;grid-template-columns:6px 1fr auto;gap:12px;background:#fff;border:1px solid var(--line);border-radius:8px;text-decoration:none;color:inherit;overflow:hidden}
+.item:hover{border-color:var(--ink2)}
+.item .spine{background:var(--line)}
+.item .spine.A1{background:var(--a1)}.item .spine.A2{background:var(--a2)}.item .spine.B{background:var(--b)}.item .spine.C{background:var(--c)}
+.item .body{padding:10px 0;min-width:0}
+.item .t{font-weight:600;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.item .m{font-size:13px;color:var(--muted);margin-top:3px}
+.item .r{padding:10px 12px 10px 0;display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+@media (max-width:600px){.item{grid-template-columns:5px 1fr}.item .r{grid-column:2;flex-direction:row;flex-wrap:wrap;align-items:center;padding:0 12px 10px 0}}
+table.t{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+table.t th,table.t td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;font-size:14px}
+table.t th{background:#EEF2F4;font-size:13px;font-weight:700}
+table.t td.n,table.t th.n{text-align:right;font-variant-numeric:tabular-nums}
+table.t tr:last-child td{border-bottom:0}
+.scroll{overflow-x:auto}
+.dhead{display:flex;gap:16px;align-items:flex-start;margin-bottom:14px}
+.dno{font-size:30px;font-weight:700;letter-spacing:-.5px;font-variant-numeric:tabular-nums;line-height:1}
+.dl{display:grid;grid-template-columns:170px 1fr;gap:6px 14px;margin:0}
+.dl dt{color:var(--muted);font-size:13.5px}.dl dd{margin:0}
+@media (max-width:600px){.dl{grid-template-columns:1fr}.dl dt{margin-top:6px}}
+.tur{border:1px solid var(--line);border-radius:10px;background:#fff;margin-bottom:12px;overflow:hidden}
+.tur .th{padding:10px 14px;background:#EEF2F4;display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center}
+.cev{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:6px;padding:10px}
+.cb{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:7px;padding:6px 8px;font-size:13.5px}
+.cb .nm{flex:1;min-width:0}
+.cb .nm small{display:block;color:var(--muted)}
+.mark{width:26px;height:26px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;font-weight:700;border:1px dashed var(--muted);color:var(--muted);flex:none}
+.mark.plus{background:var(--ok);color:#fff;border:0}.mark.minus{background:#DDE3E7;color:var(--ink);border:0}
+.mark.late{border:1.5px solid var(--gec);color:var(--gec)}
+.tl{list-style:none;padding:0;margin:0}
+.tl li{padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
+.tl li small{color:var(--muted)}
+.kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:8px}
+.kpi a{background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px 14px;text-decoration:none;color:inherit}
+.kpi a b{display:block;font-size:26px;font-variant-numeric:tabular-nums}
+.kpi a span{color:var(--muted);font-size:13px}
+.empty{padding:26px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:10px;background:#fff}
+.modal-bg{position:fixed;inset:0;background:rgba(10,25,40,.45);z-index:50;display:flex;align-items:flex-start;justify-content:center;padding:5vh 12px;overflow-y:auto}
+.modal{background:#fff;border-radius:12px;width:100%;max-width:640px;padding:18px 18px 14px;box-shadow:0 10px 40px rgba(0,0,0,.25)}
+.modal h2{margin:0 0 14px}
+.modal .foot{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
+.pick{max-height:300px;overflow-y:auto;border:1px solid var(--line);border-radius:7px;padding:4px}
+.pick label{display:flex;gap:8px;align-items:center;padding:5px 6px;border-radius:5px;font-size:14px}
+.pick label:hover{background:#F0F4F6}
+.pick .g{font-size:12px;font-weight:700;color:var(--muted);padding:8px 6px 2px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:84px;background:var(--ink);color:#fff;padding:10px 16px;border-radius:8px;z-index:60;max-width:90vw}
+.login{max-width:420px;margin:12vh auto;padding:28px;background:#fff;border:1px solid var(--line);border-radius:12px;text-align:center}
+.edit{border:1px dashed transparent;border-radius:5px;padding:2px 4px;min-height:1.4em}
+.edit:hover{border-color:var(--line)}
+.edit:focus{border-color:var(--focus);outline:none;background:#F7FBFF}
+.edited{background:#FFF7E0}
+.pre{white-space:pre-wrap;font-size:13.5px;background:#F6F8F9;border:1px solid var(--line);border-radius:8px;padding:10px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div id="app"><div class="login"><p>Yükleniyor…</p></div></div>
+<div id="modal"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, addDoc, deleteDoc, onSnapshot, query, where,
+  runTransaction, serverTimestamp, writeBatch, getCountFromServer } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyA-fN9tZS4SHh2v3mF9NUpZgRPOst5SjnE",
+  authDomain: "hhgm-is-takip.firebaseapp.com",
+  projectId: "hhgm-is-takip",
+  storageBucket: "hhgm-is-takip.firebasestorage.app",
+  messagingSenderId: "587946016439",
+  appId: "1:587946016439:web:c31ffc251faa9a45c75732"
+};
+const OWNER = "sacid1771@gmail.com";
+const fb = initializeApp(firebaseConfig);
+const auth = getAuth(fb);
+const db = getFirestore(fb);
+
+/* ---------- sabitler ---------- */
+const KATS = { A1:"Bakanlık Taslakları", A2:"A2 Taslaklar", B:"Dış Görüşler", C:"Diğer Yazılar" };
+const DURUM = { devam:"Devam ediyor", beklemede:"Beklemede", onay_uzman:"Onay bekliyor (uzman yrd.)", onay_yonetici:"Onay bekliyor (yönetici)", arsiv:"Arşiv" };
+const ROL = { atayan:"Atayan", uzman:"Uzman Yardımcısı", yonetici:"Yönetici", kurucu:"Sistem sahibi" };
+const SONUC = ["Yürürlüğe girdi","Görüş bildirildi","İade edildi","Geri çekildi","Diğer"];
+const ADIM = {
+  istem:"Görüş değerlendirme istemi gönderildi",
+  form:"Görüş değerlendirme formu geldi",
+  iade:"Görüş değerlendirme formu iade edildi",
+  kontrol:"Son kontrole gönderildi",
+  raportor:"Raportör dönüşü"
+};
+const VARSAYILAN_TURLER = ["Müstakil Yönetmelik","Çerçeve Yönetmelik","Müstakil Yönerge","Çerçeve Yönerge","Müstakil Tebliğ","Çerçeve Tebliğ",
+  "Genelge","Usul ve Esaslar","Protokol","Kılavuz","Eylem Planı","Cumhurbaşkanlığı Kararnamesi","Kanun","Standart","Diğer"];
+
+/* ---------- durum ---------- */
+const S = { user:null, email:"", me:null, role:null, users:{}, dosyalar:{}, arsiv:null, birimler:{}, hukukcular:{}, turler:[],
+  sayac:{}, bildirimler:[], ekListeler:{}, unsub:[], ready:false };
+
+/* ---------- yardımcılar ---------- */
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pad = n => String(n).padStart(2,"0");
+const bugun = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; };
+const tarih = s => { if(!s) return ""; const m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? `${+m[3]}.${+m[2]}.${m[1]}` : String(s); };
+const simdi = () => new Date().toISOString();
+const uid = () => Math.random().toString(36).slice(2,10);
+const norm = s => String(s||"").toLocaleUpperCase("tr").replace(/^AV\.?\s*/,"").replace(/\s+/g," ").trim();
+const myName = () => S.me?.ad || S.user?.displayName || S.email;
+const userName = e => (e && S.users[e]?.ad) || e || "";
+const isOwner = () => S.email === OWNER;
+const isYon = () => isOwner() || S.role === "yonetici";
+const isAtayan = () => S.role === "atayan";
+const isMgr = () => isYon() || isAtayan();
+const canEditAll = d => isYon() || (isAtayan() && d.durum !== "arsiv");
+const canWork = d => canEditAll(d) || (d.atananEmail === S.email && d.durum !== "arsiv");
+const aktifKullanicilar = rol => Object.values(S.users).filter(u => u.aktif && (!rol || u.rol === rol)).sort((a,b)=>a.ad.localeCompare(b.ad,"tr"));
+const yoneticiler = () => aktifKullanicilar("yonetici").map(u=>u.email);
+
+function toast(msg){ const t=document.createElement("div"); t.className="toast"; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),3200); }
+function hata(e){ console.error(e); toast("İşlem kaydedilemedi: " + (e?.code==="permission-denied" ? "bu işlem için yetkiniz yok." : (e?.message||e))); }
+
+function yonelme(ad){
+  ad = String(ad||"").trim(); if(!ad) return "";
+  const lo = ad.toLocaleLowerCase("tr"), V="aıoueiöü", B="aıou";
+  let lv=""; for(let i=lo.length-1;i>=0;i--){ if(V.includes(lo[i])){lv=lo[i];break;} }
+  const son = lo.slice(-1), once = lo.slice(-2,-1);
+  const kisa = ad === ad.toLocaleUpperCase("tr") && !ad.includes(" ");
+  if(kisa){
+    if(!V.includes(son) && !V.includes(once)) return ad+"'ye";
+    return ad+"'"+(V.includes(son)?"y":"")+(B.includes(lv)?"a":"e");
+  }
+  const ek = B.includes(lv) ? "a" : "e";
+  if(V.includes(son)) return ad + (ad.includes(" ") && "ıiuü".includes(son) ? "n" : "y") + ek;
+  return ad + ek;
+}
+
+/* son tarih yardımcıları */
+const etkinSon = (tur, b) => b.ekSure || tur.sonTarih || "";
+function acikBirimler(d){
+  const out=[];
+  (d.turlar||[]).forEach(t => (t.birimler||[]).forEach(b => { if(!b.sonuc) out.push({tur:t, b, son:etkinSon(t,b)}); }));
+  return out;
+}
+function gecikme(d){
+  const bg = bugun(); let gec=0, bugunSon=0;
+  acikBirimler(d).forEach(x => { if(x.son && x.son < bg) gec++; else if(x.son===bg) bugunSon++; });
+  const cevapGec = d.durum!=="arsiv" && d.cevapSonTarih && d.cevapSonTarih < bg;
+  return { gec, bugunSon, cevapGec, var: gec>0 || cevapGec };
+}
+
+/* ---------- rapor metni (otomatik) ---------- */
+function olaylar(d){
+  const ev = [{tip:"acilis", tarih:d.gelisTarihi||"", sira:0}];
+  (d.turlar||[]).forEach((t,i)=>ev.push({tip:"tur", tarih:t.tarih||"", tur:t, sira:1000+i, id:t.id}));
+  (d.adimlar||[]).forEach((a,i)=>ev.push({tip:a.tip, tarih:a.tarih||"", adim:a, sira:2000+i, id:a.id}));
+  if(d.cb?.isaret) ev.push({tip:"cb", tarih:d.cb.tarih||"", sira:3000});
+  ev.sort((a,b)=> (a.tarih||"").localeCompare(b.tarih||"") || a.sira-b.sira);
+  return ev;
+}
+const olayAnahtar = d => { const ev = olaylar(d); const l = ev[ev.length-1]; return `${ev.length}|${l.tip}|${l.id||""}|${l.tarih}`; };
+function olayMetni(d, e){
+  const t = tarih(e.tarih);
+  switch(e.tip){
+    case "acilis": return { a:`Taslak ${t} tarihinde Genel Müdürlüğümüze gönderildi.`, b:"İnceleniyor." };
+    case "tur": {
+      const bl = e.tur.birimler||[]; const tip = e.tur.tip==="dis" ? "dış görüşe" : "iç görüşe";
+      const hepsi = bl.length && bl.every(b=>b.sonuc);
+      let a = bl.length && bl.length<=3
+        ? `${t} tarihinde ${bl.map(b=>b.kisa||b.ad).join(", ")} görüşüne açıldı.`
+        : `${t} tarihinde ${tip} açıldı.`;
+      if(e.tur.sonTarih) a = a.replace(/\.$/, `, ${tarih(e.tur.sonTarih)} tarihine kadar süre verildi.`);
+      if(hepsi) return { a: a+" Görüş süreci tamamlandı.", b:"Görüş değerlendirme istemi hazırlanıyor." };
+      return { a, b:"" };
+    }
+    case "istem": return { a:`Görüş değerlendirme istemi ${t} tarihinde ${yonelme(e.adim.birim||d.birimAd)} gönderildi.`, b:"Görüş değerlendirme formunun Genel Müdürlüğümüze gönderilmesi bekleniyor." };
+    case "form": return { a:`Görüş değerlendirme formu ${t} tarihinde Genel Müdürlüğümüze gönderildi.`, b:"Taslağa nihai hali veriliyor." };
+    case "iade": return { a:`Görüş değerlendirme formu ${t} tarihinde ${yonelme(e.adim.birim||d.birimAd)} iade edildi.`, b:"Görüş değerlendirme formunun revize edilerek Genel Müdürlüğümüze gönderilmesi bekleniyor." };
+    case "kontrol": return { a:`Nihai taslak ${t} tarihinde son kontrol için ${yonelme(e.adim.birim||d.birimAd)} gönderildi.`, b:"Son kontrol neticesi bekleniyor." };
+    case "raportor": return { a:`Raportör dönüşü (${t}): ${e.adim.not||""}`.trim(), b:"" };
+    case "cb": return { a:`${t} tarihli ve ${d.cb?.sayi||"…"} sayılı yazı ile Cumhurbaşkanlığına gönderildi.`, b:"Raportör incelemesinde." };
+  }
+  return { a:"", b:"" };
+}
+function bekleyenSatiri(d){
+  const out = [];
+  (d.turlar||[]).forEach(t => {
+    const ac = (t.birimler||[]).filter(b=>!b.sonuc);
+    if(!ac.length) return;
+    const adlar = ac.map(b => (b.kisa||b.ad) + (b.ekSure ? ` (ek süre: ${tarih(b.ekSure)})` : ""));
+    out.push(`Cevap bekleniyor: ${adlar.join(", ")}${t.sonTarih?` (son tarih ${tarih(t.sonTarih)})`:""}`);
+  });
+  return out.join("\n");
+}
+function otoMetin(d){
+  const ev = olaylar(d); const son = ev[ev.length-1];
+  let {a, b} = olayMetni(d, son);
+  if(d.durum==="beklemede" && d.beklemeGerekce) b = d.beklemeGerekce;
+  if(d.cb?.isaret && son.tip!=="cb") { /* CB sonrası gelişme */ }
+  const bek = bekleyenSatiri(d);
+  if(bek) b = b ? b+"\n"+bek : bek;
+  return { aciklama:a, beklenen:b };
+}
+function raporMetni(d){
+  const o = otoMetin(d); const r = d.raporDuzeltme;
+  if(r && r.anahtar === olayAnahtar(d)) return { aciklama: r.aciklama ?? o.aciklama, beklenen: r.beklenen ?? o.beklenen, duzeltildi:true, oto:o };
+  return { ...o, duzeltildi:false, oto:o };
+}
+
+/* ---------- modal ---------- */
+function modal(html){ const m=document.getElementById("modal"); m.innerHTML=`<div class="modal-bg"><div class="modal" role="dialog" aria-modal="true">${html}</div></div>`;
+  const f = m.querySelector("input,select,textarea"); if(f) setTimeout(()=>f.focus(),30); return m.querySelector(".modal"); }
+function kapat(){ document.getElementById("modal").innerHTML=""; }
+document.addEventListener("keydown", e => { if(e.key==="Escape") kapat(); });
+document.getElementById("modal").addEventListener("mousedown", e => { if(e.target.classList.contains("modal-bg")) kapat(); });
+const fd = el => Object.fromEntries(new FormData(el.querySelector("form")).entries());
+
+/* ---------- veri ---------- */
+async function dosyaGuncelle(d, patch, olay){
+  patch.guncelleme = serverTimestamp();
+  if(olay) patch.gecmis = [...(d.gecmis||[]), { zaman: simdi(), kim: myName(), olay }];
+  await updateDoc(doc(db,"dosyalar",d.id), patch);
+}
+async function bildir(alicilar, baslik, metin, dosyaId){
+  const set = [...new Set(alicilar.filter(Boolean))];
+  for(const a of set){
+    await addDoc(collection(db,"bildirimler"), { alici:a, baslik, metin, dosyaId:dosyaId||null, okundu:false, eposta:true, gonderildi:false,
+      zaman: serverTimestamp(), olusturan:S.email });
+  }
+}
+async function arsivYukle(zorla){
+  if(S.arsiv && !zorla) return;
+  const snap = await getDocs(query(collection(db,"dosyalar"), where("durum","==","arsiv")));
+  S.arsiv = {}; snap.forEach(x => S.arsiv[x.id] = { id:x.id, ...x.data() });
+}
+const tumDosyalar = () => ({ ...(S.arsiv||{}), ...S.dosyalar });
+const dosyaBul = id => S.dosyalar[id] || S.arsiv?.[id];
+function birimListesi(tur){ return Object.values(S.birimler).filter(b => !tur || b.tur===tur).sort((a,b)=>a.ad.localeCompare(b.ad,"tr")); }
+async function birimBulYaDaEkle(ad, kisa, tur){
+  ad = ad.trim(); if(!ad) return null;
+  const var_ = Object.values(S.birimler).find(b => norm(b.ad)===norm(ad));
+  if(var_) return var_;
+  const ref = await addDoc(collection(db,"birimler"), { ad, kisaltma:(kisa||"").trim(), tur });
+  const b = { id:ref.id, ad, kisaltma:(kisa||"").trim(), tur }; S.birimler[ref.id]=b; return b;
+}
+
+/* ---------- giriş ---------- */
+onAuthStateChanged(auth, async user => {
+  S.unsub.forEach(u=>u()); S.unsub=[]; S.user=user; S.ready=false;
+  if(!user){ return girisEkrani(); }
+  S.email = (user.email||"").toLowerCase();
+  let me = null;
+  try { const s = await getDoc(doc(db,"kullanicilar",S.email)); if(s.exists()) me = s.data(); } catch(e){ console.warn(e); }
+  if(isOwner()){ S.me = me || { ad:user.displayName||"Sistem sahibi", email:S.email, rol:"kurucu", aktif:true }; S.role = "kurucu"; }
+  else if(!me || !me.aktif){ return erisimYok(); }
+  else { S.me = me; S.role = me.rol; }
+  dinle();
+});
+function girisEkrani(){
+  document.getElementById("app").innerHTML = `<div class="login">
+    <div class="bars" style="justify-content:center;margin-bottom:14px"><i style="background:var(--a1);height:28px;width:8px"></i><i style="background:var(--a2);height:28px;width:8px"></i><i style="background:var(--b);height:28px;width:8px"></i><i style="background:var(--c);height:28px;width:8px"></i></div>
+    <h1>Mevzuat Takip Sistemi</h1><p class="sub">Genel Müdürlüğe tanımlı Google hesabınızla giriş yapın.</p>
+    <button class="btn p" id="gir">Google ile giriş yap</button><p class="err" id="gerr"></p></div>`;
+  document.getElementById("gir").onclick = async () => {
+    try { await signInWithPopup(auth, new GoogleAuthProvider()); }
+    catch(e){ document.getElementById("gerr").textContent = e.code==="auth/popup-blocked" ? "Tarayıcı açılır pencereyi engelledi. Açılır pencerelere izin verip tekrar deneyin." : "Giriş yapılamadı: "+(e.code||e.message); }
+  };
+}
+function erisimYok(){
+  document.getElementById("app").innerHTML = `<div class="login"><h1>Erişim yetkiniz yok</h1>
+    <p class="sub"><b>${esc(S.email)}</b> adresi sisteme tanımlı değil ya da pasif durumda. Sistem yöneticisinden bu adresi eklemesini isteyin.</p>
+    <button class="btn" id="cik">Farklı hesapla giriş yap</button></div>`;
+  document.getElementById("cik").onclick = () => signOut(auth);
+}
+
+function dinle(){
+  const u = S.unsub, hazir = new Set(), gerekli = ["k","d","b","h","a","s","n","e"];
+  const tamam = k => { hazir.add(k); if(!S.ready && gerekli.every(x=>hazir.has(x))){ S.ready=true; iskelet(); ciz(); } else if(S.ready) cizCanli(); };
+  const hataDinle = k => e => { console.error(k,e); tamam(k); };
+  u.push(onSnapshot(collection(db,"kullanicilar"), s => { S.users={}; s.forEach(x=>S.users[x.id]={email:x.id,...x.data()}); tamam("k"); }, hataDinle("k")));
+  u.push(onSnapshot(query(collection(db,"dosyalar"), where("durum","!=","arsiv")), s => {
+    S.dosyalar={}; s.forEach(x=>S.dosyalar[x.id]={id:x.id,...x.data()});
+    if(S.arsiv){ Object.keys(S.dosyalar).forEach(id=>delete S.arsiv[id]); }
+    s.docChanges().forEach(ch => { if(ch.type==="removed" && S.arsiv) S.arsiv=null; });
+    tamam("d"); }, hataDinle("d")));
+  u.push(onSnapshot(collection(db,"birimler"), s => { S.birimler={}; s.forEach(x=>S.birimler[x.id]={id:x.id,...x.data()}); tamam("b"); }, hataDinle("b")));
+  u.push(onSnapshot(collection(db,"hukukcular"), s => { S.hukukcular={}; s.forEach(x=>S.hukukcular[x.id]={id:x.id,...x.data()}); tamam("h"); }, hataDinle("h")));
+  u.push(onSnapshot(doc(db,"ayarlar","genel"), s => { S.turler = (s.exists() && s.data().turler?.length) ? s.data().turler : VARSAYILAN_TURLER; tamam("a"); }, hataDinle("a")));
+  u.push(onSnapshot(collection(db,"sayaclar"), s => { S.sayac={}; s.forEach(x=>S.sayac[x.id]=x.data().son||0); tamam("s"); }, hataDinle("s")));
+  u.push(onSnapshot(query(collection(db,"bildirimler"), where("alici","==",S.email)), s => {
+    S.bildirimler=[]; s.forEach(x=>S.bildirimler.push({id:x.id,...x.data()}));
+    S.bildirimler.sort((a,b)=>(b.zaman?.seconds||0)-(a.zaman?.seconds||0)); tamam("n"); }, hataDinle("n")));
+  u.push(onSnapshot(collection(db,"ekListeler"), s => { S.ekListeler={}; s.forEach(x=>S.ekListeler[x.id]={id:x.id,...x.data()}); tamam("e"); }, hataDinle("e")));
+}
+
+/* ---------- iskelet & yönlendirme ---------- */
+function navLinkleri(){
+  const l = [["pano","Pano","◧"],["dosyalar","Dosyalar","☰"]];
+  if(S.role==="uzman") l.push(["benim","Dosyalarım","◉"]);
+  if(isMgr()) l.push(["yeni","Yeni dosya","＋"]);
+  l.push(["raporlar","Raporlar","▤"],["listeler","Listeler","≡"]);
+  if(isYon()) l.push(["ayarlar","Ayarlar","⚙"]);
+  return l;
+}
+function iskelet(){
+  document.getElementById("app").innerHTML = `
+  <header class="top"><a class="brand" href="#/pano"><span class="bars"><i style="background:var(--a1)"></i><i style="background:var(--a2)"></i><i style="background:var(--b)"></i><i style="background:var(--c)"></i></span>Mevzuat Takip</a>
+    <button id="zil" aria-label="Bildirimler" title="Bildirimler">🔔<span id="zilsay"></span></button>
+    <button id="kim" title="Hesap">${esc((myName()||"?").split(" ")[0])} ▾</button></header>
+  <div class="layout"><nav class="side" id="side"></nav><main id="main"></main></div>
+  <nav class="bottom" id="bottom"></nav>`;
+  document.getElementById("zil").onclick = () => location.hash = "#/bildirimler";
+  document.getElementById("kim").onclick = () => {
+    const m = modal(`<h2>${esc(myName())}</h2><p>${esc(S.email)}<br><span class="sub">${ROL[S.role]||""}</span></p>
+      <div class="foot"><button class="btn" id="ck">Çıkış yap</button><button class="btn p" onclick="document.getElementById('modal').innerHTML=''">Kapat</button></div>`);
+    m.querySelector("#ck").onclick = () => { kapat(); signOut(auth); };
+  };
+}
+function navCiz(r){
+  const l = navLinkleri();
+  document.getElementById("side").innerHTML = l.map(([k,t])=>`<a href="#/${k}" class="${r===k?"on":""}">${t}</a>`).join("");
+  const alt = l.filter(([k])=>["pano","dosyalar","benim","yeni","raporlar"].includes(k)).slice(0,4);
+  alt.push(["daha","Diğer","⋯"]);
+  document.getElementById("bottom").innerHTML = alt.map(([k,t,i])=>`<a href="#/${k}" class="${r===k||(k==="daha"&&["listeler","ayarlar","bildirimler"].includes(r))?"on":""}"><b>${i}</b>${t}</a>`).join("");
+  const n = S.bildirimler.filter(b=>!b.okundu).length;
+  document.getElementById("zilsay").innerHTML = n ? `<span class="dot">${n}</span>` : "";
+}
+function rota(){
+  const h = location.hash.replace(/^#\/?/,"") || "pano";
+  const [yol, qs] = h.split("?"); const parca = yol.split("/");
+  return { ad:parca[0], p:parca.slice(1), q:Object.fromEntries(new URLSearchParams(qs||"")) };
+}
+const CANLI = new Set(["pano","dosyalar","benim","dosya","bildirimler","ayarlar","listeler","daha"]);
+let bekleyenCizim=false;
+function cizCanli(){
+  if(!S.ready) return;
+  navCiz(rota().ad);
+  if(!CANLI.has(rota().ad)) return;
+  if(document.getElementById("modal").innerHTML) { bekleyenCizim=true; return; }
+  ciz();
+}
+new MutationObserver(()=>{ if(!document.getElementById("modal").innerHTML && bekleyenCizim){ bekleyenCizim=false; ciz(); } })
+  .observe(document.getElementById("modal"), {childList:true});
+window.addEventListener("hashchange", () => { if(S.ready){ ciz(); window.scrollTo(0,0); } });
+
+function ciz(){
+  const r = rota(); navCiz(r.ad === "dosya" ? "dosyalar" : r.ad);
+  const m = document.getElementById("main");
+  const V = { pano:vPano, dosyalar:vDosyalar, benim:vBenim, dosya:vDosya, yeni:vYeni, raporlar:vRaporlar, rapor:vRapor,
+    listeler:vListeler, ayarlar:vAyarlar, bildirimler:vBildirimler, daha:vDaha, aktarim:vAktarim };
+  (V[r.ad] || vPano)(m, r);
+}
+
+/* ---------- ortak parçalar ---------- */
+function durumRozet(d){
+  let s = `<span class="badge b-${d.durum}">${esc(DURUM[d.durum]||d.durum)}</span>`;
+  if(d.cb?.isaret) s += ` <span class="badge b-cb">Cumhurbaşkanlığında</span>`;
+  const g = gecikme(d); if(g.var) s += ` <span class="badge b-gec">Gecikme</span>`;
+  if(d.raporGizle && d.kategori==="A1") s += ` <span class="badge b-gizli">Raporda gizli</span>`;
+  if(d.eskiKayit) s += ` <span class="badge b-gizli">Eski kayıt</span>`;
+  return s;
+}
+function satir(d){
+  const b = S.birimler[d.birimId];
+  return `<a class="item" href="#/dosya/${d.id}"><div class="spine ${d.kategori}"></div>
+    <div class="body"><div class="t">${esc(d.ad)}</div>
+    <div class="m"><span class="num">${esc(d.dosyaNo||"—")}</span> · ${esc(b?.kisaltma || d.birimAd || "")} · ${esc(d.sorumluAd || userName(d.atananEmail) || "Atanmadı")}</div></div>
+    <div class="r">${durumRozet(d)}</div></a>`;
+}
+function sirala(l){ return l.sort((a,b)=> (b.gelisTarihi||"").localeCompare(a.gelisTarihi||"") || (b.dosyaNo||"").localeCompare(a.dosyaNo||"","tr",{numeric:true})); }
+
+/* ---------- PANO ---------- */
+function vPano(m){
+  const dl = Object.values(S.dosyalar);
+  const benim = [];
+  dl.forEach(d => {
+    if(d.durum==="onay_uzman" && d.atananEmail===S.email) benim.push([d,"Tamamlandı onayınızı bekliyor"]);
+    if(d.durum==="onay_yonetici" && isYon()) benim.push([d,"Arşiv onayınızı bekliyor"]);
+    if(d.atananEmail===S.email && d.durum!=="onay_uzman"){ const g=gecikme(d); if(g.gec) benim.push([d,`${g.gec} birimin görüş süresi geçti`]); else if(g.bugunSon) benim.push([d,`${g.bugunSon} birim için bugün son gün`]); }
+  });
+  const kisiler = aktifKullanicilar().filter(u=>u.rol==="uzman");
+  const ekstra = [...new Set(dl.map(d=>d.atananEmail).filter(e=>e && !kisiler.find(k=>k.email===e)))];
+  const satirlar = [...kisiler.map(k=>k.email), ...ekstra];
+  const say = (e, f) => dl.filter(d=>d.atananEmail===e && f(d)).length;
+  const gecList = dl.filter(d=>gecikme(d).var);
+  m.innerHTML = `<h1>Pano</h1><p class="sub">${tarih(bugun())} itibarıyla</p>
+  ${benim.length ? `<h2>Sizi bekleyenler</h2><div class="list">${benim.map(([d,n])=>satir(d).replace('<div class="r">',`<div class="r"><span class="badge b-onay_uzman">${esc(n)}</span>`)).join("")}</div>` : ""}
+  <div class="kpi" style="margin-top:14px">
+    <a href="#/dosyalar?d=devam"><b>${dl.filter(d=>d.durum==="devam").length}</b><span>Devam eden</span></a>
+    <a href="#/dosyalar?d=beklemede"><b>${dl.filter(d=>d.durum==="beklemede").length}</b><span>Beklemede</span></a>
+    <a href="#/dosyalar?d=cb"><b>${dl.filter(d=>d.cb?.isaret).length}</b><span>Cumhurbaşkanlığında</span></a>
+    <a href="#/dosyalar?d=onay"><b>${dl.filter(d=>d.durum.startsWith("onay")).length}</b><span>Onay bekleyen</span></a>
+  </div>
+  <h2>Kişi bazında dosyalar</h2>
+  <div class="scroll"><table class="t"><thead><tr><th>Uzman yardımcısı</th><th class="n">Devam</th><th class="n">Beklemede</th><th class="n">Cumhurbaşkanlığında</th><th class="n">Onay bekliyor</th><th class="n">Arşiv</th><th></th></tr></thead>
+  <tbody>${satirlar.length ? satirlar.map(e=>`<tr>
+    <td><a href="#/dosyalar?p=${encodeURIComponent(e)}">${esc(userName(e))}</a></td>
+    <td class="n"><a href="#/dosyalar?p=${encodeURIComponent(e)}&d=devam">${say(e,d=>d.durum==="devam")}</a></td>
+    <td class="n"><a href="#/dosyalar?p=${encodeURIComponent(e)}&d=beklemede">${say(e,d=>d.durum==="beklemede")}</a></td>
+    <td class="n">${say(e,d=>d.cb?.isaret)}</td>
+    <td class="n">${say(e,d=>d.durum.startsWith("onay"))}</td>
+    <td class="n" data-arsiv="${esc(e)}">…</td>
+    <td><button class="btn sm" data-tur="${esc(e)}">Türe göre</button></td></tr>
+    <tr hidden data-turrow="${esc(e)}"><td colspan="7">${turKirilim(dl.filter(d=>d.atananEmail===e))}</td></tr>`).join("")
+    : `<tr><td colspan="7" class="sub">Henüz uzman yardımcısı tanımlanmadı. Ayarlar ekranından ekip üyelerini ekleyin.</td></tr>`}</tbody></table></div>
+  <h2>Gecikenler</h2>
+  ${gecList.length ? `<div class="list">${gecList.map(d=>{ const g=gecikme(d);
+    const n = [g.gec?`${g.gec} birimin görüş süresi geçti`:"", g.cevapGec?`cevap son tarihi ${tarih(d.cevapSonTarih)} geçti`:""].filter(Boolean).join(", ");
+    return satir(d).replace('<div class="r">',`<div class="r"><span class="badge b-gec">${esc(n)}</span>`); }).join("")}</div>`
+    : `<div class="empty">Süresi geçmiş görüş ya da cevap tarihi yok.</div>`}`;
+  m.querySelectorAll("[data-tur]").forEach(b => b.onclick = () => { const r = m.querySelector(`[data-turrow="${CSS.escape(b.dataset.tur)}"]`); r.hidden = !r.hidden; });
+  m.querySelectorAll("[data-arsiv]").forEach(async td => {
+    try { const c = await getCountFromServer(query(collection(db,"dosyalar"), where("atananEmail","==",td.dataset.arsiv), where("durum","==","arsiv")));
+      td.innerHTML = `<a href="#/dosyalar?p=${encodeURIComponent(td.dataset.arsiv)}&d=arsiv">${c.data().count}</a>`; } catch(e){ td.textContent="–"; }
+  });
+}
+function turKirilim(l){
+  if(!l.length) return `<span class="sub">Aktif dosya yok.</span>`;
+  const turler = [...new Set(l.map(d=>d.tur||"Belirtilmemiş"))].sort((a,b)=>a.localeCompare(b,"tr"));
+  const ds = ["devam","beklemede","onay"];
+  return `<table class="t"><thead><tr><th>Tür</th><th class="n">Devam</th><th class="n">Beklemede</th><th class="n">Onay bekliyor</th></tr></thead><tbody>
+    ${turler.map(t=>`<tr><td>${esc(t)}</td>${ds.map(x=>`<td class="n">${l.filter(d=>(d.tur||"Belirtilmemiş")===t && (x==="onay"?d.durum.startsWith("onay"):d.durum===x)).length}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+}
+
+/* ---------- DOSYALAR ---------- */
+function vBenim(m){ vDosyalar(m, { q:{ p:S.email, ...rota().q } }, true); }
+async function vDosyalar(m, r, benim){
+  const q = r.q || {}; const k = q.k||""; const d = q.d||"aktif"; const p = q.p||""; const ara = q.q||"";
+  const arsivGerekli = d==="arsiv" || d==="hepsi";
+  if(arsivGerekli && !S.arsiv){ m.innerHTML = `<h1>Dosyalar</h1><div class="empty">Arşiv yükleniyor…</div>`; try{ await arsivYukle(); }catch(e){ hata(e); } if(rota().ad!==(benim?"benim":"dosyalar")) return; }
+  let l = Object.values(arsivGerekli ? tumDosyalar() : S.dosyalar);
+  if(k) l = l.filter(x=>x.kategori===k);
+  if(p) l = l.filter(x=>x.atananEmail===p);
+  const df = { aktif:x=>x.durum!=="arsiv", devam:x=>x.durum==="devam", beklemede:x=>x.durum==="beklemede", cb:x=>x.cb?.isaret && x.durum!=="arsiv",
+    onay:x=>x.durum.startsWith("onay"), gec:x=>gecikme(x).var, arsiv:x=>x.durum==="arsiv", hepsi:()=>true }[d] || (()=>true);
+  l = l.filter(df);
+  if(ara){ const a = norm(ara); l = l.filter(x => norm([x.ad,x.dosyaNo,x.birimAd,x.sorumluAd,(x.destekHukukcular||[]).join(" "),x.gelisBarkod,x.eskiBilgi].join(" ")).includes(a)); }
+  sirala(l);
+  const baslik = benim ? "Dosyalarım" : (p ? userName(p)+" – dosyalar" : "Dosyalar");
+  const link = o => "#/"+(benim?"benim":"dosyalar")+"?"+new URLSearchParams(Object.fromEntries(Object.entries({k, d, p:benim?"":p, q:ara, ...o}).filter(([,v])=>v))).toString();
+  const kisiSec = benim ? "" : `<select id="fp"><option value="">Tüm kişiler</option>${aktifKullanicilar().filter(u=>u.rol==="uzman").map(u=>`<option value="${esc(u.email)}" ${u.email===p?"selected":""}>${esc(u.ad)}</option>`).join("")}</select>`;
+  m.innerHTML = `<h1>${esc(baslik)}</h1><p class="sub">${l.length} dosya</p>
+    <div class="tabs">${[["","Tümü"],...Object.entries(KATS)].map(([kk,t])=>`<a href="${link({k:kk})}" class="${k===kk?"on":""}">${kk?`<span class="kat k-${kk}">${kk}</span> `:""}${esc(t)}</a>`).join("")}</div>
+    <div class="filters"><input type="search" id="fq" placeholder="Ad, dosya no, birim, barkod ara" value="${esc(ara)}">
+      <select id="fd">${[["aktif","Tüm aktif dosyalar"],["devam","Devam ediyor"],["beklemede","Beklemede"],["cb","Cumhurbaşkanlığında"],["onay","Onay bekliyor"],["gec","Gecikmesi olan"],["arsiv","Arşiv"],["hepsi","Aktif + arşiv"]].map(([v,t])=>`<option value="${v}" ${v===d?"selected":""}>${t}</option>`).join("")}</select>
+      ${kisiSec || "<span></span>"}</div>
+    ${l.length ? `<div class="list">${l.slice(0,300).map(satir).join("")}</div>${l.length>300?`<p class="sub">İlk 300 dosya gösteriliyor, aramayı daraltın.</p>`:""}`
+      : `<div class="empty">Bu ölçütlere uyan dosya yok.${isMgr()?` <a href="#/yeni">Yeni dosya açın</a>.`:""}</div>`}`;
+  const fq = m.querySelector("#fq"); let zt;
+  fq.oninput = () => { clearTimeout(zt); zt = setTimeout(()=>{ history.replaceState(null,"",link({q:fq.value})); vDosyalar(m, {q:{...q, q:fq.value}}, benim); const n=m.querySelector("#fq"); n.focus(); n.setSelectionRange(n.value.length,n.value.length); }, 300); };
+  m.querySelector("#fd").onchange = e => location.hash = link({d:e.target.value});
+  const fp = m.querySelector("#fp"); if(fp) fp.onchange = e => location.hash = link({p:e.target.value});
+}
+
+/* ---------- DOSYA DETAY ---------- */
+async function vDosya(m, r){
+  const id = r.p[0]; let d = dosyaBul(id);
+  if(!d){ try{ const s = await getDoc(doc(db,"dosyalar",id)); if(s.exists()){ d={id,...s.data()}; if(d.durum==="arsiv"){ S.arsiv=S.arsiv||{}; S.arsiv[id]=d; } } }catch(e){} }
+  if(!d){ m.innerHTML = `<div class="empty">Dosya bulunamadı. <a href="#/dosyalar">Dosyalara dön</a></div>`; return; }
+  const b = S.birimler[d.birimId]; const ew = canWork(d), ea = canEditAll(d);
+  const rm = raporMetni(d);
+  const eylem = [];
+  if(ea) eylem.push(`<button class="btn" data-x="duzenle">Bilgileri düzenle</button>`, `<button class="btn" data-x="ata">${d.atananEmail?"Yeniden ata":"Ata"}</button>`);
+  if(ew && d.durum==="devam") eylem.push(`<button class="btn" data-x="beklet">Beklemeye al</button>`);
+  if(ew && d.durum==="beklemede") eylem.push(`<button class="btn" data-x="devamet">Beklemeden çıkar</button>`);
+  if(isMgr() && ["devam","beklemede"].includes(d.durum)) eylem.push(`<button class="btn p" data-x="tamamla">Tamamlandı</button>`);
+  if(d.durum==="onay_uzman" && (d.atananEmail===S.email || isYon())) eylem.push(`<button class="btn p" data-x="uonay">Onayla</button>`,`<button class="btn danger" data-x="uret">Reddet</button>`);
+  if(d.durum==="onay_yonetici" && isYon()) eylem.push(`<button class="btn p" data-x="yonay">Onayla, arşive al</button>`,`<button class="btn danger" data-x="yret">Reddet</button>`);
+  if(d.durum==="arsiv" && isYon()) eylem.push(`<button class="btn" data-x="arsivcik">Arşivden çıkar</button>`);
+  if(ew && d.durum!=="arsiv") eylem.push(`<button class="btn" data-x="cb">${d.cb?.isaret?"Cumhurbaşkanlığı işaretini kaldır":"Cumhurbaşkanlığına gönderildi"}</button>`);
+  if(isMgr() && d.kategori==="A1" && d.durum!=="arsiv") eylem.push(`<button class="btn" data-x="gizle">${d.raporGizle?"Haftalık raporda göster":"Haftalık raporda yer verme"}</button>`);
+  const onayBilgi = d.onay?.tamamlayan ? `<p class="sub">Tamamlandı olarak işaretleyen: ${esc(d.onay.tamamlayan)} (${tarih(d.onay.tamamlamaZamani)})${d.onay.uzmanOnay?` · Uzman yrd. onayı: ${esc(d.onay.uzmanOnay)}`:""}${d.onay.yonetici?` · Yönetici onayı: ${esc(d.onay.yonetici)}`:""}${d.onay.ret?` · Son ret: ${esc(d.onay.ret)}`:""}</p>` : "";
+  m.innerHTML = `
+  <p><a href="javascript:history.back()">← Geri</a></p>
+  <div class="dhead"><div><span class="kat k-${d.kategori}">${d.kategori}</span><div class="dno" style="margin-top:6px">${esc(d.dosyaNo||"—")}</div></div>
+    <div style="flex:1;min-width:0"><h1 style="font-size:20px">${esc(d.ad)}</h1><div>${durumRozet(d)}</div></div></div>
+  ${d.durum==="beklemede"&&d.beklemeGerekce?`<p class="panel" style="border-color:var(--bekle)"><b>Beklemede:</b> ${esc(d.beklemeGerekce)}</p>`:""}
+  ${onayBilgi}
+  <div class="row" style="margin-bottom:16px">${eylem.join("")}</div>
+  <div class="grid2"><div class="panel"><dl class="dl">
+    <dt>Kategori</dt><dd>${esc(KATS[d.kategori])}</dd>
+    <dt>Türü</dt><dd>${esc(d.tur||"—")}</dd>
+    <dt>Hazırlayan / gönderen</dt><dd>${esc(d.birimAd||"—")}${b?.kisaltma?` (${esc(b.kisaltma)})`:""}</dd>
+    <dt>Geliş tarihi</dt><dd>${tarih(d.gelisTarihi)||"—"}</dd>
+    <dt>Geldiği barkod</dt><dd class="num">${esc(d.gelisBarkod||"—")}</dd>
+    <dt>Cevap son tarihi</dt><dd>${tarih(d.cevapSonTarih)||"—"}</dd>
+    <dt>Sorumlu</dt><dd>${esc(d.sorumluAd||userName(d.atananEmail)||"Atanmadı")}</dd>
+    <dt>Destek alınan hukukçu</dt><dd>${(d.destekHukukcular||[]).map(esc).join(", ")||"—"} ${ew?`<button class="btn sm" data-x="hukukcu">Düzenle</button>`:""}</dd>
+    ${d.cb?.isaret?`<dt>Cumhurbaşkanlığı teklif yazısı</dt><dd>${tarih(d.cb.tarih)} – ${esc(d.cb.sayi)}</dd>`:""}
+    ${d.sonuc?.tur?`<dt>Sonuç</dt><dd>${esc(d.sonuc.tur)} (${tarih(d.sonuc.tarih)})${d.sonuc.rgSayi?` – ${esc(d.sonuc.rgSayi)}`:""}</dd>`:""}
+    ${d.aciklama?`<dt>Açıklama</dt><dd>${esc(d.aciklama)}</dd>`:""}
+  </dl></div>
+  <div class="panel"><h3 style="margin-top:0">Rapordaki görünümü</h3>
+    <p><b>Açıklamalar:</b><br>${esc(rm.aciklama).replace(/\n/g,"<br>")||"—"}</p>
+    <p><b>Beklenen işlem:</b><br>${esc(rm.beklenen).replace(/\n/g,"<br>")||"—"}</p>
+    ${rm.duzeltildi?`<p class="hint">Bu metin elle düzeltildi. Yeni bir adım girildiğinde otomatik metne döner.</p>`:`<p class="hint">Metin, girilen adımlardan otomatik oluşuyor. Rapor ekranından düzeltebilirsiniz.</p>`}
+  </div></div>
+
+  <h2>Görüş turları</h2>
+  ${(d.turlar||[]).length ? d.turlar.map(t=>turHtml(d,t,ew)).join("") : `<div class="empty">Henüz görüşe açılmadı.</div>`}
+  ${ew?`<p><button class="btn p" data-x="turekle">Görüşe aç</button></p>`:""}
+
+  <h2>Süreç adımları</h2>
+  <p class="hint" style="margin-top:-6px">Aşamayı değiştiren yazılar. Haftalık rapordaki açıklamalar bunlardan oluşur.</p>
+  ${(d.adimlar||[]).length ? `<ul class="tl">${[...d.adimlar].sort((a,b)=>(a.tarih||"").localeCompare(b.tarih||"")).map(a=>`<li><b>${esc(ADIM[a.tip]||a.tip)}</b> – ${tarih(a.tarih)}${a.birim?` – ${esc(a.birim)}`:""}${a.barkod?` <span class="num">(${esc(a.barkod)})</span>`:""}${a.not?`<br>${esc(a.not)}`:""}<br><small>${esc(a.ekleyen||"")}</small> ${ew?`<button class="btn sm danger" data-x="adimsil" data-id="${a.id}">Sil</button>`:""}</li>`).join("")}</ul>` : `<div class="empty">Adım girilmedi.</div>`}
+  ${ew?`<p><button class="btn" data-x="adimekle">Adım ekle</button></p>`:""}
+
+  ${d.eskiBilgi?`<h2>Eski kayıttan aktarılan bilgiler</h2><div class="pre">${esc(d.eskiBilgi)}</div>`:""}
+
+  <h2>Geçmiş</h2>
+  ${(d.gecmis||[]).length ? `<ul class="tl">${[...d.gecmis].reverse().map(g=>`<li>${esc(g.olay)}<br><small>${esc(g.kim)} · ${new Date(g.zaman).toLocaleString("tr-TR")}</small></li>`).join("")}</ul>` : `<p class="sub">Kayıt yok.</p>`}`;
+  m.querySelectorAll("[data-x]").forEach(el => el.onclick = () => DX[el.dataset.x](d, el.dataset));
+}
+function turHtml(d,t,ew){
+  const bg = bugun();
+  const cev = (t.birimler||[]).filter(b=>b.sonuc).length, top=(t.birimler||[]).length;
+  return `<div class="tur"><div class="th"><b>${t.tip==="dis"?"Dış görüş":"İç görüş"}</b>
+    <span>${tarih(t.tarih)}</span><span class="num">Yazı: ${esc(t.barkod||"—")}</span><span>Son tarih: <b>${tarih(t.sonTarih)||"—"}</b></span>
+    <span>${cev}/${top} cevap</span><span class="sp"></span>${ew?`<button class="btn sm" data-x="turbirim" data-id="${t.id}">Yer ekle</button>`:""}</div>
+    <div class="cev">${(t.birimler||[]).map((b,i)=>{ const son = etkinSon(t,b); const gec = !b.sonuc && son && son<bg;
+      return `<div class="cb"><span class="mark ${b.sonuc==="+"?"plus":b.sonuc==="-"?"minus":gec?"late":""}">${b.sonuc||"?"}</span>
+      <span class="nm">${esc(b.kisa?`${b.kisa}`:b.ad)}<small>${b.kisa?esc(b.ad)+" · ":""}${b.sonuc?`${b.sonuc==="+"?"Öneri var":"Öneri yok"} ${esc(b.barkod||"")} ${tarih(b.tarih)}`:(b.ekSure?`Ek süre: ${tarih(b.ekSure)}`:gec?"Süresi geçti":"Bekleniyor")}</small></span>
+      ${ew?`<button class="btn sm" data-x="cevap" data-id="${t.id}" data-i="${i}">${b.sonuc?"Düzelt":"İşle"}</button>`:""}</div>`; }).join("")}</div></div>`;
+}
+
+/* dosya eylemleri */
+const DX = {
+  async duzenle(d){ dosyaFormu(d); },
+  ata(d){
+    const m = modal(`<h2>${d.atananEmail?"Yeniden ata":"Ata"}</h2><form><label class="f"><span>Uzman yardımcısı</span>
+      <select name="e" required><option value="">Seçin</option>${aktifKullanicilar().filter(u=>u.rol==="uzman"||u.rol==="yonetici").map(u=>`<option value="${esc(u.email)}" ${u.email===d.atananEmail?"selected":""}>${esc(u.ad)} (${ROL[u.rol]})</option>`).join("")}</select></label></form>
+      <div class="foot"><button class="btn" data-k>Vazgeç</button><button class="btn p" data-ok>Ata</button></div>`);
+    m.querySelector("[data-k]").onclick=kapat;
+    m.querySelector("[data-ok]").onclick = async () => { const {e} = fd(m); if(!e) return;
+      try{ await dosyaGuncelle(d, { atananEmail:e, sorumluAd:userName(e) }, `${userName(e)} kişisine atandı`);
+        await bildir([e], "Size yeni bir dosya atandı", `${d.dosyaNo} – ${d.ad}`, d.id); kapat(); toast("Atandı"); }catch(x){ hata(x); } };
+  },
+  beklet(d){
+    const m = modal(`<h2>Beklemeye al</h2><form><label class="f"><span>Gerekçe</span><textarea name="g" required placeholder="Örn. Kurumdan revize taslak bekleniyor."></textarea></label></form>
+      <div class="foot"><button class="btn" data-k>Vazgeç</button><button class="btn p" data-ok>Beklemeye al</button></div>`);
+    m.querySelector("[data-k]").onclick=kapat;
+    m.querySelector("[data-ok]").onclick = async () => { const {g} = fd(m); if(!g.trim()) return toast("Gerekçe yazın.");
+      try{ await dosyaGuncelle(d, { durum:"beklemede", beklemeGerekce:g.trim() }, `Beklemeye alındı: ${g.trim()}`); kapat(); }catch(x){ hata(x); } };
+  },
+  async devamet(d){ try{ await dosyaGuncelle(d, { durum:"devam", beklemeGerekce:"" }, "Beklemeden çıkarıldı"); }catch(x){ hata(x); } },
+  tamamla(d){
+    const m = modal(`<h2>Tamamlandı olarak işaretle</h2><p class="sub">Dosya önce uzman yardımcısının, sonra yöneticilerden birinin onayına gider.</p>
+      <form><label class="f"><span>Sonuç</span><select name="tur" required>${SONUC.map(s=>`<option>${s}</option>`).join("")}</select></label>
+      <label class="f"><span>Sonuç tarihi</span><input type="date" name="tarih" value="${bugun()}" required></label>
+      <label class="f"><span>RG sayısı ya da olur barkodu</span><input type="text" name="rg" placeholder="Yürürlüğe girdiyse doldurun"></label></form>
+      <div class="foot"><button class="btn" data-k>Vazgeç</button><button class="btn p" data-ok>Tamamlandı</button></div>`);
+    m.querySelector("[data-k]").onclick=kapat;
+    m.querySelector("[data-ok]").onclick = async () => { const v = fd(m);
+      if(v.tur==="Yürürlüğe girdi" && !v.rg.trim()) return toast("Yürürlüğe giren dosyada RG sayısı ya da olur barkodu gerekli.");
+      const dogrudan = !d.atananEmail;
+      try{ await dosyaGuncelle(d, { durum: dogrudan?"onay_yonetici":"onay_uzman", sonuc:{tur:v.tur, tarih:v.tarih, rgSayi:v.rg.trim()},
+          onay:{ tamamlayan:myName(), tamamlayanEmail:S.email, tamamlamaZamani:bugun() } }, `Tamamlandı olarak işaretlendi (${v.tur})`);
+        if(dogrudan) await bildir(yoneticiler(), "Arşiv onayı bekleyen dosya", `${d.dosyaNo} – ${d.ad}`, d.id);
+        else await bildir([d.atananEmail], "Dosya tamamlandı, onayınız bekleniyor", `${d.dosyaNo} – ${d.ad}`, d.id);
+        kapat(); toast("Onaya gönderildi"); }catch(x){ hata(x); } };
+  },
+  async uonay(d){
+    try{ await dosyaGuncelle(d, { durum:"onay_yonetici", onay:{ ...(d.onay||{}), uzmanOnay:myName(), uzmanZaman:bugun() } }, "Uzman yardımcısı onayladı");
+      await bildir(yoneticiler(), "Arşiv onayı bekleyen dosya", `${d.dosyaNo} – ${d.ad}`, d.id); toast("Yönetici onayına gönderildi"); }catch(x){ hata(x); }
+  },
+  uret(d){ retModal(d, "uzman"); }, yret(d){ retModal(d, "yonetici"); },
+  async yonay(d){
+    try{ await dosyaGuncelle(d, { durum:"arsiv", arsivTarihi:bugun(), onay:{ ...(d.onay||{}), yonetici:myName(), yoneticiZaman:bugun() } }, "Yönetici onayladı, arşive alındı");
+      toast("Arşive alındı"); }catch(x){ hata(x); }
+  },
+  async arsivcik(d){ if(!confirm("Dosya arşivden çıkarılıp 'Devam ediyor' durumuna alınsın mı?")) return;
+    try{ await dosyaGuncelle(d, { durum:"devam" }, "Arşivden çıkarıldı"); if(S.arsiv) delete S.arsiv[d.id]; }catch(x){ hata(x); } },
+  cb(d){
+    if(d.cb?.isaret){ if(!confirm("Cumhurbaşkanlığı işareti kaldırılsın mı?")) return;
+      return dosyaGuncelle(d, { cb:{ ...d.cb, isaret:false } }, "Cumhurbaşkanlığı işareti kaldırıldı").catch(hata); }
+    const m = modal(`<h2>Cumhurbaşkanlığına gönderildi</h2><form><label class="f"><span>Teklif yazısının tarihi</span><input type="date" name="t" value="${bugun()}" required></label>
+      <label class="f"><span>Teklif yazısının sayısı</span><input type="text" name="s" required></label></form>
+      <div class="foot"><button class="btn" data-k>Vazgeç</button><button class="btn p" data-ok>Kaydet</button></div>`);
+    m.querySelector("[data-k]").onclick=kapat;
+    m.querySelector("[data-ok]").onclick = async () => { const v = fd(m); if(!v.t || !v.s.trim()) return toast("Tarih ve sayı gerekli.");
+      try{ await dosyaGuncelle(d, { cb:{ isaret:true, tarih:v.t, sayi:v.s.trim() } }, `Cumhurbaşkanlığına gönderildi (${tarih(v.t)}, ${v.s.trim()})`); kapat(); }catch(x){ hata(x); } };
+  },
+  async gizle(d){ try{ await dosyaGuncelle(d, { raporGizle:!d.raporGizle }, d.raporGizle?"Haftalık raporda gösterilecek":"Haftalık raporda yer verilmeyecek"); }catch(x){ hata(x); } },
+  hukukcu(d){
+    const sec = new Set(d.destekHukukcular||[]);
+    const liste = Object.values(S.hukukcular).map(h=>h.ad).sort((a,b)=>a.localeCompare(b,"tr"));
+    const m = modal(`<h2>Destek alınan hukukçular</h2><input type="search" placeholder="Ara" id="ha" style="margin-bottom:6px">
+      <form><div class="pick" id="hp">${liste.map(a=>`<label><input type="checkbox" name="h" value="${esc(a)}" ${sec.has(a)?"checked":""}> ${esc(a)}</label>`).join("")||`<p class="sub">Liste boş.</p>`}</div>
+      <label class="f" style="margin-top:10px"><span>Listede yoksa yeni ekleyin</span><input type="text" name="yeni" placeholder="Ad Soyad"></label></form>
+      <div class="foot"><button class="btn" data-k>Vazgeç</button><button class="btn p" data-ok>Kaydet</button></div>`);
+    m.querySelector("#ha").oninput = e => { const a = norm(e.target.value); m.querySelectorAll("#hp label").forEach(l => l.hidden = !norm(l.textContent).includes(a)); };
+    m.querySelector("[data-k]").onclick=kapat;
+    m.querySelector("[data-ok]").onclick = async () => {
+      const secilen = [...m.querySelectorAll("input[name=h]:checked")].map(x=>x.value);
+      const yeni = m.querySelector("input[name=yeni]").value.trim();
+      try{
+        if(yeni){ if(!liste.find(a=>norm(a)===norm(yeni))) await addDoc(collection(db,"hukukcular"), { ad:yeni }); secilen.push(yeni); }
+        await dosyaGuncelle(d, { destekHukukcular:[...new Set(secilen)] }, `Destek alınan hukukçular: ${[...new Set(secilen)].join(", ")||"yok"}`); kapat();
+      }catch(x){ hata(x); } };
+  },
+  turekle(d){ turModal(d); },
+  turbirim(d, ds){ turModal(d, (d.turlar||[]).find(t=>t.id===ds.id)); },
+  cevap(d, ds){
+    const t = (d.turlar||[]).find(x=>x.id===ds.id); const b = t.birimler[+ds.i];
+    const m = modal(`<h2>${esc(b.ad)}</h2><p class="sub">${t.tip==="dis"?"Dış":"İç"} görüş, ${tarih(t.tarih)} · son tarih ${tarih(etkinSon(t,b))||"—"}</p>
+      <form><label class="f"><span>Cevap</span><select name="s"><option value="">Henüz cevap gelmedi</option><option value="+" ${b.sonuc==="+"?"selected":""}>+ Öneri var</option><option value="-" ${b.sonuc==="-"?"selected":""}>− Öneri yok</option></select></label>
+      <div class="grid2"><label class="f"><span>Cevap yazısının barkodu</span><input type="text" name="bk" value="${esc(b.barkod||"")}"></label>
+      <label class="f"><span>Cevap tarihi</span><input type="date" name="t" value="${esc(b.tarih||bugun())}"></label></div>
+      <label class="f"><span>Bu birime ek süre (isteğe bağlı)</span><input type="date" name="ek" value="${esc(b.ekSure||"")}"><div class="hint">Sadece bu birimin son tarihi değişir, hatırlatma buna göre gider.</div></label></form>
+      <div class="foot"><button class="btn danger" data-sil>Bu yeri turdan çıkar</button><span class="sp"></span><button class="btn" data-k>Vazgeç</button><button class="btn p" data-ok>Kaydet</button></div>`);
+    m.querySelector("[data-k]").onclick=kapat;
+    m.querySelector("[data-sil]").onclick = async () => { if(!confirm(`${b.ad} bu turdan çıkarılsın mı?`)) return;
+      const turlar = d.turlar.map(x => x.id!==t.id ? x : { ...x, birimler: x.birimler.filter((_,j)=>j!==+ds.i) });
+      try{ await dosyaGuncelle(d, { turlar }, `${b.ad} görüş turundan çıkarıldı`); kapat(); }catch(x){ hata(x); } };
+    m.querySelector("[data-ok]").onclick = async () => { const v = fd(m);
+      if(v.s && !v.bk.trim() && !confirm("Barkod girmeden kaydedilsin mi?")) return;
+      const yeni = { ...b, sonuc:v.s||null, barkod:v.s?v.bk.trim():"", tarih:v.s?v.t:"", ekSure:v.ek||"" };
+      const turlar = d.turlar.map(x => x.id!==t.id ? x : { ...x, birimler: x.birimler.map((y,j)=> j===+ds.i ? yeni : y) });
+      const olay = v.s ? `${b.ad}: ${v.s==="+"?"öneri var":"öneri yok"}${v.bk?` (${v.bk.trim()})`:""}` : (v.ek!==(b.ekSure||"") ? `${b.ad}: ek süre ${tarih(v.ek)||"kaldırıldı"}` : `${b.ad} güncellendi`);
+      try{ await dosyaGuncelle(d, { turlar }, olay); kapat(); }catch(x){ hata(x); } };
+  },
+  adimekle(d){
+    const m = modal(`<h2>Süreç adımı ekle</h2><form>
+      <label class="f"><span>Adım</span><select name="tip" id="at">${Object.entries(ADIM).map(([k,v])=>`<option value="${k}">${v}</option>`).join("")}</select></label>
+      <div class="grid2"><label class="f"><span>Tarih</span><input type="date" name="tarih" value="${bugun()}" required></label>
+      <label class="f"><span>Yazının barkodu</span><input type="text" name="barkod"></label></div>
+      <label class="f" id="ab"><span>İlgili birim</span><input type="text" name="birim" list="bl" value="${esc(d.birimAd||"")}"><datalist id="bl">${birimListesi().map(b=>`<option value="${esc(b.ad)}">`).join("")}</datalist></label>
+      <label class="f" id="an" hidden><span>Raportör dönüşü açıklaması</span><textarea name="not"></textarea></label></form>
+      <div class="foot"><button class="btn" data-k>Vazgeç</button><button class="btn p" data-ok>Ekle</button></div>`);
+    const at = m.querySelector("#at"); const upd = () => { const r = at.value==="raportor"; m.querySelector("#an").hidden=!r; m.querySelector("#ab").hidden = at.value==="form"||r; };
+    at.onchange = upd; upd();
+    m.querySelector("[data-k]").onclick=kapat;
+    m.querySelector("[data-ok]").onclick = async () => { const v = fd(m);
+      if(v.tip==="raportor" && !v.not?.trim()) return toast("Raportör dönüşünün açıklamasını yazın.");
+      const a = { id:uid(), tip:v.tip, tarih:v.tarih, barkod:(v.barkod||"").trim(), birim:["form","raportor"].includes(v.tip)?"":(v.birim||"").trim(), not:(v.not||"").trim(), ekleyen:myName(), zaman:simdi() };
+      try{ await dosyaGuncelle(d, { adimlar:[...(d.adimlar||[]), a] }, `Adım eklendi: ${ADIM[v.tip]} (${tarih(v.tarih)})`); kapat(); }catch(x){ hata(x); } };
+  },
+  async adimsil(d, ds){ const a = (d.adimlar||[]).find(x=>x.id===ds.id); if(!a || !confirm(`"${ADIM[a.tip]}" adımı silinsin mi?`)) return;
+    try{ await dosyaGuncelle(d, { adimlar:d.adimlar.filter(x=>x.id!==ds.id) }, `Adım silindi: ${ADIM[a.tip]} (${tarih(a.tarih)})`); }catch(x){ hata(x); } }
+};
+function retModal(d, kim){
+  const m = modal(`<h2>Onayı reddet</h2><form><label class="f"><span>Gerekçe</span><textarea name="g" required placeholder="Örn. Görüş değerlendirme formu henüz gelmedi."></textarea></label></form>
+    <div class="foot"><button class="btn" data-k>Vazgeç</button><button class="btn danger" data-ok>Reddet</button></div>`);
+  m.querySelector("[data-k]").onclick=kapat;
+  m.querySelector("[data-ok]").onclick = async () => { const {g} = fd(m); if(!g.trim()) return toast("Gerekçe yazın.");
+    try{ await dosyaGuncelle(d, { durum:"devam", onay:{ ...(d.onay||{}), ret:`${myName()}: ${g.trim()}` } }, `Onay reddedildi (${kim==="uzman"?"uzman yardımcısı":"yönetici"}): ${g.trim()}`);
+      await bildir([d.onay?.tamamlayanEmail], "Tamamlama onayı reddedildi", `${d.dosyaNo} – ${d.ad}\nGerekçe: ${g.trim()}`, d.id); kapat(); }catch(x){ hata(x); } };
+}
+function turModal(d, mevcut){
+  const secili = new Set((mevcut?.birimler||[]).map(b=>b.key));
+  const kaynak = [...birimListesi().map(b=>({key:b.id, ad:b.ad, kisa:b.kisaltma||"", grup:b.tur==="dis"?"Dış kurumlar":b.tur==="ic"?"İç birimler":"Diğer"})),
+    ...Object.values(S.hukukcular).map(h=>({key:"h:"+h.id, ad:h.ad, kisa:"", grup:"Hukukçular"}))];
+  const gruplar = ["İç birimler","Dış kurumlar","Hukukçular","Diğer"];
+  const liste = () => gruplar.map(g => { const l = kaynak.filter(x=>x.grup===g).sort((a,b)=>a.ad.localeCompare(b.ad,"tr")); if(!l.length) return "";
+    return `<div class="g" data-g="${g}">${g}</div>` + l.map(x=>`<label data-gr="${g}"><input type="checkbox" value="${esc(x.key)}" ${secili.has(x.key)?"checked disabled":""}> ${esc(x.ad)}${x.kisa?` <small class="sub">(${esc(x.kisa)})</small>`:""}</label>`).join(""); }).join("");
+  const m = modal(`<h2>${mevcut?"Görüş turuna yer ekle":"Görüşe aç"}</h2><form>
+    ${mevcut?"":`<div class="grid2"><label class="f"><span>Tür</span><select name="tip" id="tt"><option value="ic">İç görüş</option><option value="dis" ${d.kategori==="B"?"selected":""}>Dış görüş</option></select></label>
+    <label class="f"><span>Görüş istem yazısının barkodu</span><input type="text" name="barkod" required></label>
+    <label class="f"><span>Yazı tarihi</span><input type="date" name="tarih" value="${bugun()}" required></label>
+    <label class="f"><span>Son tarih</span><input type="date" name="son" required></label></div>`}
+    <span style="font-size:13px;font-weight:600">Görüşe açılan yerler</span>
+    <div class="row" style="margin:4px 0 6px"><input type="search" id="ta" placeholder="Ara" style="flex:1"><label class="row" style="font-size:13px"><input type="checkbox" id="tg"> Tüm grupları göster</label></div>
+    <div class="pick" id="tp">${liste()}</div>
+    <details style="margin-top:10px"><summary>Listede olmayan bir yer ekle</summary>
+      <div class="grid2" style="margin-top:8px"><label class="f"><span>Adı</span><input type="text" id="ya"></label><label class="f"><span>Kısaltma</span><input type="text" id="yk"></label></div>
+      <label class="f"><span>Türü</span><select id="yt"><option value="ic">İç birim</option><option value="dis">Dış kurum</option><option value="hukukcu">Hukukçu</option></select></label>
+      <button type="button" class="btn sm" id="yekle">Listeye ekle ve işaretle</button></details>
+  </form><div class="foot"><button class="btn" data-k>Vazgeç</button><button class="btn p" data-ok>${mevcut?"Ekle":"Görüşe aç"}</button></div>`);
+  const tt = m.querySelector("#tt"), tg = m.querySelector("#tg"), ta = m.querySelector("#ta");
+  const suz = () => { const tip = mevcut ? mevcut.tip : tt.value; const hepsi = tg.checked; const a = norm(ta.value);
+    const acik = g => hepsi || (tip==="ic" ? ["İç birimler","Hukukçular"] : ["Dış kurumlar"]).includes(g);
+    m.querySelectorAll("#tp label").forEach(l => l.hidden = !(acik(l.dataset.gr) && norm(l.textContent).includes(a)) && !l.querySelector("input").checked);
+    m.querySelectorAll("#tp .g").forEach(g => g.hidden = !acik(g.dataset.g)); };
+  if(tt) tt.onchange = suz; tg.onchange = suz; ta.oninput = suz; suz();
+  m.querySelector("#yekle").onclick = async () => {
+    const ad = m.querySelector("#ya").value.trim(), kisa = m.querySelector("#yk").value.trim(), tur = m.querySelector("#yt").value;
+    if(!ad) return toast("Adı yazın.");
+    try{ let key;
+      if(tur==="hukukcu"){ const h = Object.values(S.hukukcular).find(x=>norm(x.ad)===norm(ad)); if(h) key="h:"+h.id; else { const r = await addDoc(collection(db,"hukukcular"),{ad}); S.hukukcular[r.id]={id:r.id,ad}; key="h:"+r.id; } kaynak.push({key, ad, kisa:"", grup:"Hukukçular"}); }
+      else { const b = await birimBulYaDaEkle(ad, kisa, tur); key=b.id; if(!kaynak.find(x=>x.key===key)) kaynak.push({key, ad:b.ad, kisa:b.kisaltma||"", grup:b.tur==="dis"?"Dış kurumlar":"İç birimler"}); }
+      const isaretli = new Set([...m.querySelectorAll("#tp input:checked")].map(x=>x.value)); isaretli.add(key);
+      m.querySelector("#tp").innerHTML = liste(); m.querySelectorAll("#tp input").forEach(x => { if(isaretli.has(x.value)) x.checked = true; });
+      m.querySelector("#ya").value=""; m.querySelector("#yk").value=""; suz(); toast(`${ad} eklendi ve işaretlendi`);
+    }catch(x){ hata(x); } };
+  m.querySelector("[data-k]").onclick=kapat;
+  m.querySelector("[data-ok]").onclick = async () => {
+    const keys = [...m.querySelectorAll("#tp input:checked:not(:disabled)")].map(x=>x.value);
+    if(!keys.length) return toast("En az bir yer işaretleyin.");
+    const yeniBirimler = keys.map(k => { const x = kaynak.find(y=>y.key===k); return { key:k, ad:x.ad, kisa:x.kisa||"", sonuc:null, barkod:"", tarih:"", ekSure:"" }; });
+    let turlar, olay;
+    if(mevcut){ turlar = d.turlar.map(t => t.id!==mevcut.id ? t : { ...t, birimler:[...t.birimler, ...yeniBirimler] }); olay = `Görüş turuna eklendi: ${yeniBirimler.map(b=>b.kisa||b.ad).join(", ")}`; }
+    else { const v = fd(m); if(!v.barkod.trim() || !v.son) return toast("Barkod ve son tarih gerekli.");
+      turlar = [...(d.turlar||[]), { id:uid(), tip:v.tip, barkod:v.barkod.trim(), tarih:v.tarih, sonTarih:v.son, birimler:yeniBirimler }];
+      olay = `${v.tip==="dis"?"Dış":"İç"} görüşe açıldı (${v.barkod.trim()}), ${yeniBirimler.length} yer, son tarih ${tarih(v.son)}`; }
+    try{ await dosyaGuncelle(d, { turlar }, olay); kapat(); toast("Kaydedildi"); }catch(x){ hata(x); }
+  };
+}
+
+/* ---------- YENİ DOSYA / DÜZENLE ---------- */
+function onEk(k, y){ return k==="A1"?`${y}/A1-`:k==="A2"?`${y}/A2-`:`${y}/${k}`; }
+function sonrakiNo(k){
+  const y = new Date().getFullYear(); const on = onEk(k,y); let max = S.sayac[`${y}-${k}`]||0;
+  Object.values(tumDosyalar()).forEach(d => { if(d.dosyaNo?.startsWith(on)){ const n = parseInt(d.dosyaNo.slice(on.length)); if(n>max) max=n; } });
+  return on + (max+1);
+}
+function vYeni(m){ if(!isMgr()){ m.innerHTML=`<div class="empty">Dosya açma yetkiniz yok.</div>`; return; } dosyaFormu(null, m); }
+function dosyaFormu(d, hedef){
+  const yeni = !d; d = d || { kategori:"A1", gelisTarihi:bugun(), destekHukukcular:[] };
+  const html = `<h1 style="${yeni?"":"font-size:20px"}">${yeni?"Yeni dosya":"Bilgileri düzenle"}</h1>${yeni?`<p class="sub">Dosya atanan uzman yardımcısının sayfasına düşer ve kendisine e-posta gider.</p>`:""}
+  <form id="df"><div class="panel">
+    <label class="f"><span>Kategori</span><div class="row">${Object.entries(KATS).map(([k,t])=>`<label class="row" style="margin-right:10px"><input type="radio" name="kategori" value="${k}" ${d.kategori===k?"checked":""}> <span class="kat k-${k}">${k}</span> ${t}</label>`).join("")}</div></label>
+    <div class="grid2"><label class="f"><span>Dosya no</span><input type="text" name="dosyaNo" value="${esc(d.dosyaNo||"")}" required><div class="hint">Otomatik geldi, gerekirse değiştirebilirsiniz.</div></label>
+    <label class="f"><span>Türü</span><input type="text" name="tur" list="tl" value="${esc(d.tur||"")}"><datalist id="tl">${S.turler.map(t=>`<option value="${esc(t)}">`).join("")}</datalist></label></div>
+    <label class="f"><span>Mevzuat ya da yazının adı</span><textarea name="ad" required>${esc(d.ad||"")}</textarea></label>
+    <div class="grid2"><label class="f"><span>Hazırlayan / gönderen birim ya da kurum</span><input type="text" name="birim" id="bi" list="bil" value="${esc(d.birimAd||"")}" autocomplete="off"><datalist id="bil"></datalist><div class="hint" id="bih"></div></label>
+    <label class="f"><span>Kısaltma</span><input type="text" name="kisa" id="bk" value="${esc(S.birimler[d.birimId]?.kisaltma||"")}"><div class="hint">Raporda birim adının yanında görünür (SHGM, TİTCK…).</div></label></div>
+    <div class="grid2"><label class="f"><span>Geliş tarihi</span><input type="date" name="gelisTarihi" value="${esc(d.gelisTarihi||"")}"></label>
+    <label class="f"><span>Geldiği barkod</span><input type="text" name="gelisBarkod" value="${esc(d.gelisBarkod||"")}"></label></div>
+    <div class="grid2"><label class="f"><span>Cevap için son tarih</span><input type="date" name="cevapSonTarih" value="${esc(d.cevapSonTarih||"")}"><div class="hint">Varsa, özellikle dış görüşlerde.</div></label>
+    ${yeni?`<label class="f"><span>Atanan uzman yardımcısı</span><select name="atanan"><option value="">Şimdilik atama</option>${aktifKullanicilar().filter(u=>u.rol==="uzman").map(u=>`<option value="${esc(u.email)}">${esc(u.ad)}</option>`).join("")}</select></label>`:"<span></span>"}</div>
+    ${yeni?`<label class="f"><span>Destek alınan hukukçular (isteğe bağlı)</span><select name="hukukcu" multiple size="4">${Object.values(S.hukukcular).map(h=>h.ad).sort((a,b)=>a.localeCompare(b,"tr")).map(a=>`<option>${esc(a)}</option>`).join("")}</select><div class="hint">Birden fazla seçmek için Ctrl (Mac'te Cmd) tuşuna basılı tutun. Sonradan dosyadan da eklenebilir.</div></label>`:""}
+    <label class="f"><span>Açıklama (isteğe bağlı)</span><textarea name="aciklama">${esc(d.aciklama||"")}</textarea></label>
+    <p class="err" id="fe"></p>
+    <div class="row"><button type="submit" class="btn p">${yeni?"Dosyayı aç":"Kaydet"}</button>${yeni?"":`<button type="button" class="btn" data-k>Vazgeç</button>`}</div>
+  </div></form>`;
+  let kok;
+  if(hedef){ hedef.innerHTML = html; kok = hedef; } else { kok = modal(html); kok.style.maxWidth="760px"; kok.querySelector("[data-k]").onclick = kapat; }
+  const f = kok.querySelector("#df"), bi = kok.querySelector("#bi"), bk = kok.querySelector("#bk"), bih = kok.querySelector("#bih");
+  const katTur = () => { const k = f.kategori.value; return k==="B" ? "dis" : (k==="C" ? "" : "ic"); };
+  const dl = () => { kok.querySelector("#bil").innerHTML = birimListesi(katTur()).map(b=>`<option value="${esc(b.ad)}">${esc(b.kisaltma||"")}</option>`).join(""); };
+  const eslesme = () => { const b = Object.values(S.birimler).find(x=>norm(x.ad)===norm(bi.value));
+    if(b){ if(!bk.value) bk.value = b.kisaltma||""; bih.textContent = ""; } else bih.textContent = bi.value.trim() ? "Listede yok; kaydedince listeye eklenecek." : ""; };
+  bi.oninput = eslesme; dl();
+  f.querySelectorAll("input[name=kategori]").forEach(r => r.onchange = () => { dl(); if(yeni) f.dosyaNo.value = sonrakiNo(f.kategori.value); });
+  if(yeni && !f.dosyaNo.value) f.dosyaNo.value = sonrakiNo(d.kategori);
+  f.onsubmit = async e => { e.preventDefault(); const fe = kok.querySelector("#fe"); fe.textContent="";
+    const v = Object.fromEntries(new FormData(f).entries());
+    const no = v.dosyaNo.trim(); if(!no || !v.ad.trim()) { fe.textContent="Dosya no ve ad gerekli."; return; }
+    try{
+      if(no !== d.dosyaNo){ const q = await getDocs(query(collection(db,"dosyalar"), where("dosyaNo","==",no)));
+        if(!q.empty){ fe.textContent = `${no} numarası başka bir dosyada kullanılıyor. Farklı bir numara girin.`; return; } }
+      let birim = null;
+      if(v.birim.trim()){ const tur = katTur() || (Object.values(S.birimler).find(x=>norm(x.ad)===norm(v.birim))?.tur) || "ic";
+        birim = await birimBulYaDaEkle(v.birim, v.kisa, tur);
+        if(v.kisa.trim() && birim && v.kisa.trim()!==(birim.kisaltma||"") && isMgr()) await updateDoc(doc(db,"birimler",birim.id), { kisaltma:v.kisa.trim() }); }
+      if(v.tur.trim() && !S.turler.includes(v.tur.trim())) await setDoc(doc(db,"ayarlar","genel"), { turler:[...S.turler, v.tur.trim()] }, { merge:true });
+      const veri = { kategori:v.kategori, dosyaNo:no, ad:v.ad.trim(), tur:v.tur.trim(), birimId:birim?.id||"", birimAd:birim?.ad||"",
+        gelisTarihi:v.gelisTarihi, gelisBarkod:v.gelisBarkod.trim(), cevapSonTarih:v.cevapSonTarih, aciklama:v.aciklama.trim() };
+      const y = new Date().getFullYear(), on = onEk(v.kategori, y);
+      if(no.startsWith(on)){ const n = parseInt(no.slice(on.length)); if(n > (S.sayac[`${y}-${v.kategori}`]||0)) await setDoc(doc(db,"sayaclar",`${y}-${v.kategori}`), { son:n }); }
+      if(yeni){
+        const hk = [...f.querySelectorAll("select[name=hukukcu] option:checked")].map(o=>o.value);
+        const ref = await addDoc(collection(db,"dosyalar"), { ...veri, atananEmail:v.atanan||"", sorumluAd:v.atanan?userName(v.atanan):"", destekHukukcular:hk,
+          durum:"devam", beklemeGerekce:"", cb:{isaret:false}, raporGizle:false, sonuc:null, onay:{}, raporDuzeltme:null, turlar:[], adimlar:[],
+          gecmis:[{ zaman:simdi(), kim:myName(), olay:`Dosya açıldı${v.atanan?`, ${userName(v.atanan)} kişisine atandı`:""}` }], eskiKayit:false,
+          olusturan:S.email, olusturma:serverTimestamp(), guncelleme:serverTimestamp() });
+        if(v.atanan) await bildir([v.atanan], "Size yeni bir dosya atandı", `${no} – ${veri.ad}`, ref.id);
+        toast("Dosya açıldı"); location.hash = "#/dosya/"+ref.id;
+      } else { await dosyaGuncelle(d, veri, "Dosya bilgileri düzenlendi"); kapat(); toast("Kaydedildi"); }
+    }catch(x){ hata(x); }
+  };
+}
+
+/* ---------- BİLDİRİMLER ---------- */
+function vBildirimler(m){
+  m.innerHTML = `<h1>Bildirimler</h1><p class="sub">${S.bildirimler.filter(b=>!b.okundu).length} okunmamış</p>
+    ${S.bildirimler.length ? `<div class="row" style="margin-bottom:10px"><button class="btn sm" id="hep">Tümünü okundu say</button></div><ul class="tl">${S.bildirimler.slice(0,100).map(b=>`<li style="${b.okundu?"":"font-weight:600"}">
+      <a href="#" data-b="${b.id}">${esc(b.baslik)}</a><br>${esc(b.metin).replace(/\n/g,"<br>")}<br><small>${b.zaman?.seconds?new Date(b.zaman.seconds*1000).toLocaleString("tr-TR"):""}</small></li>`).join("")}</ul>`
+      : `<div class="empty">Bildiriminiz yok.</div>`}`;
+  m.querySelectorAll("[data-b]").forEach(a => a.onclick = async e => { e.preventDefault(); const b = S.bildirimler.find(x=>x.id===a.dataset.b);
+    if(!b.okundu) updateDoc(doc(db,"bildirimler",b.id),{okundu:true}).catch(()=>{}); if(b.dosyaId) location.hash="#/dosya/"+b.dosyaId; });
+  const h = m.querySelector("#hep"); if(h) h.onclick = async () => { const bt = writeBatch(db); S.bildirimler.filter(b=>!b.okundu).forEach(b=>bt.update(doc(db,"bildirimler",b.id),{okundu:true})); await bt.commit().catch(hata); };
+}
+function vDaha(m){
+  m.innerHTML = `<h1>Diğer</h1><div class="list">
+    <a class="item" href="#/bildirimler"><div class="spine"></div><div class="body"><div class="t">Bildirimler</div></div><div class="r"></div></a>
+    <a class="item" href="#/listeler"><div class="spine"></div><div class="body"><div class="t">Listeler</div><div class="m">Rehber, notlar, genelgeler, kanun paketleri…</div></div><div class="r"></div></a>
+    ${isMgr()?`<a class="item" href="#/raporlar"><div class="spine"></div><div class="body"><div class="t">Raporlar</div></div><div class="r"></div></a>`:""}
+    ${isYon()?`<a class="item" href="#/ayarlar"><div class="spine"></div><div class="body"><div class="t">Ayarlar</div><div class="m">Kişiler, roller, birimler, hukukçular</div></div><div class="r"></div></a>`:""}
+    </div>`;
+}
+
+/* ---------- RAPORLAR ---------- */
+function vRaporlar(m){
+  m.innerHTML = `<h1>Raporlar</h1><p class="sub">Raporlar Word dosyası olarak indirilir.</p><div class="list">
+    <a class="item" href="#/rapor/haftalik"><div class="spine A1"></div><div class="body"><div class="t">Bakanlık Mevzuat Taslakları tablosu</div><div class="m">A1'deki aktif taslaklar: çalışılan, beklemede ve Cumhurbaşkanlığına gönderilenler</div></div><div class="r"></div></a>
+    <a class="item" href="#/rapor/genel"><div class="spine"></div><div class="body"><div class="t">Genel durum raporu</div><div class="m">Seçilen kategorilerdeki tüm dosyalar, durumlarına göre</div></div><div class="r"></div></a>
+    <a class="item" href="#/rapor/donem"><div class="spine"></div><div class="body"><div class="t">Dönemsel sayılar</div><div class="m">Tarih aralığında gelen, yürürlüğe giren dosyalar; birim bazında dağılım</div></div><div class="r"></div></a></div>`;
+}
+function vRapor(m, r){ ({ haftalik:rHaftalik, genel:rGenel, donem:rDonem }[r.p[0]] || vRaporlar)(m, r); }
+
+function raporBolumleri(dosyalar, cbAyri){
+  const devam = dosyalar.filter(d => (d.durum==="devam" || d.durum.startsWith("onay")) && !(cbAyri && d.cb?.isaret));
+  const bek = dosyalar.filter(d => d.durum==="beklemede" && !(cbAyri && d.cb?.isaret));
+  const cb = cbAyri ? dosyalar.filter(d => d.cb?.isaret && d.durum!=="arsiv") : [];
+  const srt = l => l.sort((a,b)=>(a.gelisTarihi||"").localeCompare(b.gelisTarihi||""));
+  return [
+    { baslik:"ÇALIŞILAN TASLAKLAR", l:srt(devam), cols:["Sıra No","Mevzuat adı","Açıklamalar","Beklenen İşlem"] },
+    { baslik:"BEKLEMEDE OLAN TASLAKLAR", l:srt(bek), cols:["Sıra No","Mevzuat adı","Hangi aşamada olduğu","Beklenen İşlem"] },
+    ...(cbAyri ? [{ baslik:"CUMHURBAŞKANLIĞINA GÖNDERİLEN TASLAKLAR", l:srt(cb), cols:["Sıra No","Mevzuat adı","Hangi aşamada olduğu"], cb:true }] : [])
+  ];
+}
+function cbAsama(d){ const ev = olaylar(d); const son = ev[ev.length-1]; const rm = raporMetni(d);
+  if(rm.duzeltildi) return rm.aciklama; return son.tip==="cb" ? "Raportör incelemesinde." : olayMetni(d, son).a; }
+function kisa(d){ return S.birimler[d.birimId]?.kisaltma || d.birimAd || ""; }
+
+function onizleme(bolumler, duzenlenebilir){
+  return bolumler.map(bl => `<h3>${esc(bl.baslik)} (${bl.l.length} Taslak)</h3>
+    ${bl.l.length ? `<div class="scroll"><table class="t"><thead><tr>${bl.cols.map(c=>`<th>${esc(c)}</th>`).join("")}</tr></thead><tbody>
+    ${bl.l.map((d,i)=>{ const rm = raporMetni(d); const e = duzenlenebilir && canWork(d);
+      const hucre = (alan, deger) => `<td class="${rm.duzeltildi?"edited":""}"><div class="edit" ${e?`contenteditable="plaintext-only" data-id="${d.id}" data-alan="${alan}"`:""}>${esc(deger).replace(/\n/g,"<br>")}</div></td>`;
+      return `<tr><td class="n">${i+1}</td><td><a href="#/dosya/${d.id}">${esc(d.ad)}</a> <b>(${esc(kisa(d))})</b></td>
+      ${bl.cb ? hucre("aciklama", cbAsama(d)) : hucre("aciklama", rm.aciklama)+hucre("beklenen", rm.beklenen)}</tr>`; }).join("")}</tbody></table></div>` : `<p class="sub">Yok.</p>`}`).join("");
+}
+function duzeltmeBagla(m){
+  m.querySelectorAll("[data-alan]").forEach(el => {
+    const ilk = el.innerText;
+    el.onblur = async () => { const yeni = el.innerText.trim(); if(yeni === ilk.trim()) return;
+      const d = dosyaBul(el.dataset.id); const rm = raporMetni(d);
+      const rd = { aciklama:rm.aciklama, beklenen:rm.beklenen, anahtar:olayAnahtar(d) }; rd[el.dataset.alan] = yeni;
+      if(d.cb?.isaret && el.dataset.alan==="aciklama") rd.aciklama = yeni;
+      try{ await dosyaGuncelle(d, { raporDuzeltme:rd }, "Rapor metni elle düzeltildi"); el.closest("td").classList.add("edited"); toast("Düzeltme kaydedildi"); }catch(x){ hata(x); } };
+  });
+}
+function rHaftalik(m){
+  const l = Object.values(S.dosyalar).filter(d=>d.kategori==="A1" && !d.raporGizle);
+  const gizli = Object.values(S.dosyalar).filter(d=>d.kategori==="A1" && d.raporGizle);
+  const bol = raporBolumleri(l, true); const top = bol.reduce((s,b)=>s+b.l.length,0);
+  m.innerHTML = `<p><a href="#/raporlar">← Raporlar</a></p><h1>Bakanlık Mevzuat Taslakları</h1>
+    <p class="sub">Toplam ${top} taslak. Hücrelere tıklayıp metni düzeltebilirsiniz; düzeltme dosyaya kaydedilir ve yeni bir adım girilene kadar sonraki raporlarda da kullanılır. Sarı hücreler elle düzeltilmiş.</p>
+    ${gizli.length?`<p class="panel" style="padding:10px 14px">${gizli.length} dosya rapora dahil edilmedi: ${gizli.map(d=>`<a href="#/dosya/${d.id}">${esc(d.ad.slice(0,60))}</a>`).join(", ")}</p>`:""}
+    <div class="row" style="margin:10px 0"><button class="btn p" id="indir">Word olarak indir</button></div>
+    <div id="on">${onizleme(bol, true)}</div>`;
+  duzeltmeBagla(m);
+  m.querySelector("#indir").onclick = () => { const b = raporBolumleri(Object.values(S.dosyalar).filter(d=>d.kategori==="A1" && !d.raporGizle), true);
+    const t = b.reduce((s,x)=>s+x.l.length,0); const n = new Date();
+    wordIndir([ baslikP("BAKANLIK MEVZUAT TASLAKLARI"), baslikP(`(Toplam ${t} Taslak)`), ...b.flatMap(bolumDocx) ],
+      `Mevzuat Daire Başkanlığı - Günlük Tablo (${n.getDate()}.${n.getMonth()+1}.${n.getFullYear()} ${pad(n.getHours())}.${pad(n.getMinutes())}).docx`); };
+}
+async function rGenel(m, r){
+  const q = r.q; const katlar = q.k ? q.k.split(",") : Object.keys(KATS); const kisi = q.p||"";
+  const durumlar = q.d ? q.d.split(",") : ["devam","beklemede","cb","onay"];
+  const l = Object.values(S.dosyalar).filter(d => katlar.includes(d.kategori) && (!kisi || d.atananEmail===kisi) &&
+    ((durumlar.includes("devam") && d.durum==="devam" && !d.cb?.isaret) || (durumlar.includes("beklemede") && d.durum==="beklemede" && !d.cb?.isaret) ||
+     (durumlar.includes("cb") && d.cb?.isaret) || (durumlar.includes("onay") && d.durum.startsWith("onay") && !d.cb?.isaret)));
+  const bolum = k => { const kl = l.filter(d=>d.kategori===k); const b = raporBolumleri(kl, true).filter(x => x.l.length);
+    b.forEach(x => { x.baslik = x.baslik.replace("TASLAKLAR","DOSYALAR"); }); return b; };
+  m.innerHTML = `<p><a href="#/raporlar">← Raporlar</a></p><h1>Genel durum raporu</h1>
+    <div class="panel"><div class="grid2"><div><b>Kategoriler</b><div class="row">${Object.keys(KATS).map(k=>`<label class="row"><input type="checkbox" name="k" value="${k}" ${katlar.includes(k)?"checked":""}> <span class="kat k-${k}">${k}</span></label>`).join("")}</div></div>
+    <div><b>Durumlar</b><div class="row">${[["devam","Devam"],["beklemede","Beklemede"],["cb","Cumhurbaşkanlığında"],["onay","Onay bekliyor"]].map(([v,t])=>`<label class="row"><input type="checkbox" name="d" value="${v}" ${durumlar.includes(v)?"checked":""}> ${t}</label>`).join("")}</div></div></div>
+    <label class="f" style="margin-top:10px;max-width:360px"><span>Kişi</span><select id="gp"><option value="">Tüm ekip</option>${aktifKullanicilar().filter(u=>u.rol==="uzman").map(u=>`<option value="${esc(u.email)}" ${u.email===kisi?"selected":""}>${esc(u.ad)}</option>`).join("")}</select></label>
+    <div class="row"><button class="btn" id="uyg">Uygula</button><button class="btn p" id="indir">Word olarak indir</button></div></div>
+    <h2>Özet</h2><div class="scroll"><table class="t"><thead><tr><th>Kategori</th><th class="n">Devam</th><th class="n">Beklemede</th><th class="n">Cumhurbaşkanlığında</th><th class="n">Onay bekliyor</th><th class="n">Toplam</th></tr></thead><tbody>
+    ${katlar.map(k=>{ const kl=l.filter(d=>d.kategori===k); const c=[kl.filter(d=>d.durum==="devam"&&!d.cb?.isaret).length, kl.filter(d=>d.durum==="beklemede"&&!d.cb?.isaret).length, kl.filter(d=>d.cb?.isaret).length, kl.filter(d=>d.durum.startsWith("onay")&&!d.cb?.isaret).length];
+      return `<tr><td><span class="kat k-${k}">${k}</span> ${KATS[k]}</td>${c.map(x=>`<td class="n">${x}</td>`).join("")}<td class="n"><b>${kl.length}</b></td></tr>`; }).join("")}</tbody></table></div>
+    ${katlar.map(k=>`<h2><span class="kat k-${k}">${k}</span> ${KATS[k]}</h2>${bolum(k).length ? onizleme(bolum(k), true) : `<p class="sub">Dosya yok.</p>`}`).join("")}`;
+  duzeltmeBagla(m);
+  const secim = () => ({ k:[...m.querySelectorAll("input[name=k]:checked")].map(x=>x.value).join(","), d:[...m.querySelectorAll("input[name=d]:checked")].map(x=>x.value).join(","), p:m.querySelector("#gp").value });
+  m.querySelector("#uyg").onclick = () => { const s = secim(); location.hash = "#/rapor/genel?"+new URLSearchParams(Object.fromEntries(Object.entries(s).filter(([,v])=>v))); };
+  m.querySelector("#indir").onclick = () => { const n = new Date();
+    const govde = [ baslikP("MEVZUAT DAİRESİ GENEL DURUM RAPORU"), baslikP(`(${n.getDate()}.${n.getMonth()+1}.${n.getFullYear()} itibarıyla, toplam ${l.length} dosya${kisi?` – ${userName(kisi)}`:""})`) ];
+    katlar.forEach(k => { const b = bolum(k); if(!b.length) return; govde.push(new docx.Paragraph({ spacing:{before:300, after:100}, children:[ new docx.TextRun({ text:`${KATS[k].toLocaleUpperCase("tr")} (${l.filter(d=>d.kategori===k).length})`, bold:true, size:26 }) ] }));
+      b.forEach(x => govde.push(...bolumDocx(x))); });
+    wordIndir(govde, `Genel Durum Raporu (${n.getDate()}.${n.getMonth()+1}.${n.getFullYear()}).docx`); };
+}
+async function rDonem(m, r){
+  const y = new Date().getFullYear(); const bas = r.q.b || `${y}-01-01`, bit = r.q.s || bugun(); const katlar = r.q.k ? r.q.k.split(",") : Object.keys(KATS);
+  m.innerHTML = `<p><a href="#/raporlar">← Raporlar</a></p><h1>Dönemsel sayılar</h1><div class="empty">Arşiv yükleniyor…</div>`;
+  try{ await arsivYukle(); }catch(e){ hata(e); return; }
+  const tum = Object.values(tumDosyalar()).filter(d=>katlar.includes(d.kategori));
+  const gelen = tum.filter(d => d.gelisTarihi && d.gelisTarihi>=bas && d.gelisTarihi<=bit);
+  const yur = tum.filter(d => d.sonuc?.tur==="Yürürlüğe girdi" && d.sonuc.tarih>=bas && d.sonuc.tarih<=bit);
+  const kapanan = tum.filter(d => d.durum==="arsiv" && (d.sonuc?.tarih||d.arsivTarihi||"")>=bas && (d.sonuc?.tarih||d.arsivTarihi||"")<=bit);
+  const birimSay = {}; gelen.forEach(d => { const k = d.birimAd||"Belirtilmemiş"; birimSay[k]=(birimSay[k]||0)+1; });
+  const birimSira = Object.entries(birimSay).sort((a,b)=>b[1]-a[1]);
+  m.innerHTML = `<p><a href="#/raporlar">← Raporlar</a></p><h1>Dönemsel sayılar</h1>
+    <div class="panel"><div class="grid2"><label class="f"><span>Başlangıç</span><input type="date" id="rb" value="${bas}"></label><label class="f"><span>Bitiş</span><input type="date" id="rs" value="${bit}"></label></div>
+    <div class="row">${Object.keys(KATS).map(k=>`<label class="row"><input type="checkbox" name="k" value="${k}" ${katlar.includes(k)?"checked":""}> <span class="kat k-${k}">${k}</span></label>`).join("")}<span class="sp"></span><button class="btn" id="uyg">Uygula</button><button class="btn" id="csv">Listeyi Excel'e aktar</button></div></div>
+    <div class="kpi" style="margin-top:14px"><a><b>${gelen.length}</b><span>Gelen dosya</span></a><a><b>${yur.length}</b><span>Yürürlüğe giren</span></a><a><b>${kapanan.length}</b><span>Arşive geçen (sonuçlanan)</span></a></div>
+    <p class="hint">Eski kayıtlarda sonucu belirlenemeyen dosyalar "Yürürlüğe giren" sayısına girmez.</p>
+    <h2>Kategoriye göre gelen</h2><table class="t"><thead><tr><th>Kategori</th><th class="n">Gelen</th><th class="n">Yürürlüğe giren</th></tr></thead><tbody>
+      ${katlar.map(k=>`<tr><td><span class="kat k-${k}">${k}</span> ${KATS[k]}</td><td class="n">${gelen.filter(d=>d.kategori===k).length}</td><td class="n">${yur.filter(d=>d.kategori===k).length}</td></tr>`).join("")}</tbody></table>
+    <h2>Birim / kuruma göre gelen</h2>${birimSira.length?`<div class="scroll"><table class="t"><thead><tr><th>Birim / kurum</th><th class="n">Gelen</th></tr></thead><tbody>${birimSira.map(([b,n])=>`<tr><td>${esc(b)}</td><td class="n">${n}</td></tr>`).join("")}</tbody></table></div>`:`<p class="sub">Bu dönemde gelen dosya yok.</p>`}
+    <h2>Yürürlüğe girenler</h2>${yur.length?`<div class="list">${yur.map(satir).join("")}</div>`:`<p class="sub">Yok.</p>`}`;
+  m.querySelector("#uyg").onclick = () => { const k=[...m.querySelectorAll("input[name=k]:checked")].map(x=>x.value).join(",");
+    location.hash = "#/rapor/donem?"+new URLSearchParams({ b:m.querySelector("#rb").value, s:m.querySelector("#rs").value, k }); };
+  m.querySelector("#csv").onclick = () => {
+    const satirlar = [["Dosya no","Kategori","Ad","Tür","Birim/kurum","Geliş tarihi","Durum","Sonuç","Sonuç tarihi","RG/olur","Sorumlu"],
+      ...gelen.map(d=>[d.dosyaNo,d.kategori,d.ad,d.tur,d.birimAd,tarih(d.gelisTarihi),DURUM[d.durum],d.sonuc?.tur||"",tarih(d.sonuc?.tarih),d.sonuc?.rgSayi||"",d.sorumluAd||userName(d.atananEmail)])];
+    const csv = "\ufeff"+satirlar.map(r=>r.map(c=>`"${String(c??"").replace(/"/g,'""')}"`).join(";")).join("\r\n");
+    indir(new Blob([csv],{type:"text/csv;charset=utf-8"}), `Gelen dosyalar ${tarih(bas)}-${tarih(bit)}.csv`); };
+}
+
+/* Word */
+function baslikP(t){ return new docx.Paragraph({ alignment:docx.AlignmentType.CENTER, spacing:{after:80}, children:[new docx.TextRun({ text:t, bold:true, size:26 })] }); }
+function hucreP(metin, opt={}){ return String(metin||"").split("\n").map(s => new docx.Paragraph({ spacing:{after:40}, children:[ new docx.TextRun({ text:s, bold:!!opt.bold, size:20 }) ] })); }
+function bolumDocx(bl){
+  const out = [ new docx.Paragraph({ bullet:{level:0}, spacing:{before:240, after:120}, children:[ new docx.TextRun({ text:`${bl.baslik} (${bl.l.length} Taslak)`, bold:true, size:22 }) ] }) ];
+  if(!bl.l.length) return out;
+  const gen = bl.cb ? [8,44,48] : [7,33,30,30];
+  const hucre = (children, w, bas) => new docx.TableCell({ width:{size:w, type:docx.WidthType.PERCENTAGE}, shading: bas?{fill:"D9E2EA"}:undefined, children });
+  const satirlar = [ new docx.TableRow({ tableHeader:true, children: bl.cols.map((c,i)=>hucre(hucreP(c,{bold:true}), gen[i], true)) }) ];
+  bl.l.forEach((d,i) => { const rm = raporMetni(d);
+    const ad = [ new docx.Paragraph({ children:[ new docx.TextRun({ text:d.ad+" ", size:20 }), new docx.TextRun({ text:`(${kisa(d)})`, bold:true, size:20 }) ] }) ];
+    const hs = [ hucre(hucreP(String(i+1)), gen[0]), hucre(ad, gen[1]) ];
+    if(bl.cb) hs.push(hucre(hucreP(cbAsama(d)), gen[2])); else hs.push(hucre(hucreP(rm.aciklama), gen[2]), hucre(hucreP(rm.beklenen), gen[3]));
+    satirlar.push(new docx.TableRow({ children:hs })); });
+  out.push(new docx.Table({ width:{size:100, type:docx.WidthType.PERCENTAGE}, rows:satirlar }));
+  return out;
+}
+async function wordIndir(children, ad){
+  if(!window.docx){ toast("Word kütüphanesi yüklenemedi. Sayfayı yenileyip tekrar deneyin."); return; }
+  const d = new docx.Document({ styles:{ default:{ document:{ run:{ font:"Times New Roman" } } } },
+    sections:[{ properties:{ page:{ margin:{ top:1000, bottom:1000, left:1000, right:1000 } } }, children }] });
+  indir(await docx.Packer.toBlob(d), ad);
+}
+function indir(blob, ad){ const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = ad; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 1000); }
+
+/* ---------- LİSTELER ---------- */
+async function vListeler(m, r){
+  const listeler = Object.values(S.ekListeler).sort((a,b)=>(a.sira||0)-(b.sira||0));
+  if(!listeler.length){ m.innerHTML = `<h1>Listeler</h1><div class="empty">Henüz liste yok. Eski kayıtlar aktarıldığında rehber, notlar, genelgeler ve diğer listeler burada görünecek.</div>`; return; }
+  const aktif = S.ekListeler[r.p[0]] || listeler[0];
+  m.innerHTML = `<h1>Listeler</h1><div class="tabs">${listeler.map(l=>`<a href="#/listeler/${l.id}" class="${l.id===aktif.id?"on":""}">${esc(l.ad)}</a>`).join("")}</div><div class="empty">Yükleniyor…</div>`;
+  const snap = await getDocs(query(collection(db,"ekKayitlar"), where("listeId","==",aktif.id)));
+  if(rota().ad!=="listeler") return;
+  const kayit = []; snap.forEach(x=>kayit.push({id:x.id,...x.data()})); kayit.sort((a,b)=>(a.sira||0)-(b.sira||0));
+  const yaz = !aktif.salt || isYon();
+  const ciz_ = ara => { const a = norm(ara); const l = a ? kayit.filter(k=>norm(Object.values(k.degerler||{}).join(" ")).includes(a)) : kayit;
+    return `<div class="scroll"><table class="t"><thead><tr>${aktif.sutunlar.map(s=>`<th>${esc(s)}</th>`).join("")}${yaz?"<th></th>":""}</tr></thead><tbody>
+    ${l.map(k=>`<tr>${aktif.sutunlar.map(s=>`<td>${esc(k.degerler?.[s]??"").replace(/\n/g,"<br>")}</td>`).join("")}${yaz?`<td><button class="btn sm" data-ek="${k.id}">Düzenle</button></td>`:""}</tr>`).join("") || `<tr><td colspan="${aktif.sutunlar.length+1}" class="sub">Kayıt yok.</td></tr>`}</tbody></table></div>`; };
+  m.innerHTML = `<h1>Listeler</h1><div class="tabs">${listeler.map(l=>`<a href="#/listeler/${l.id}" class="${l.id===aktif.id?"on":""}">${esc(l.ad)}</a>`).join("")}</div>
+    ${aktif.salt?`<p class="hint">Eski kayıt arşivi. ${isYon()?"Sadece yöneticiler düzenleyebilir.":"Salt okunur."}</p>`:""}
+    <div class="row" style="margin-bottom:10px"><input type="search" id="la" placeholder="Bu listede ara" style="flex:1;max-width:380px">${yaz?`<button class="btn p" id="lyeni">Kayıt ekle</button>`:""}</div><div id="lt">${ciz_("")}</div>`;
+  const bagla = () => m.querySelectorAll("[data-ek]").forEach(b => b.onclick = () => ekKayitModal(aktif, kayit.find(k=>k.id===b.dataset.ek)));
+  m.querySelector("#la").oninput = e => { m.querySelector("#lt").innerHTML = ciz_(e.target.value); bagla(); }; bagla();
+  const yb = m.querySelector("#lyeni"); if(yb) yb.onclick = () => ekKayitModal(aktif, null, kayit.length);
+}
+function ekKayitModal(liste, k, n){
+  const m = modal(`<h2>${k?"Kaydı düzenle":"Kayıt ekle"}</h2><form>${liste.sutunlar.map(s=>`<label class="f"><span>${esc(s)}</span><textarea name="${esc(s)}" style="min-height:44px">${esc(k?.degerler?.[s]??"")}</textarea></label>`).join("")}</form>
+    <div class="foot">${k && isMgr()?`<button class="btn danger" data-sil>Sil</button><span class="sp"></span>`:""}<button class="btn" data-k>Vazgeç</button><button class="btn p" data-ok>Kaydet</button></div>`);
+  m.querySelector("[data-k]").onclick = kapat;
+  const sil = m.querySelector("[data-sil]"); if(sil) sil.onclick = async () => { if(!confirm("Kayıt silinsin mi?")) return; try{ await deleteDoc(doc(db,"ekKayitlar",k.id)); kapat(); ciz(); }catch(x){ hata(x); } };
+  m.querySelector("[data-ok]").onclick = async () => { const v = fd(m);
+    try{ if(k) await updateDoc(doc(db,"ekKayitlar",k.id), { degerler:v }); else await addDoc(collection(db,"ekKayitlar"), { listeId:liste.id, degerler:v, sira:(n||0)+1 });
+      kapat(); ciz(); }catch(x){ hata(x); } };
+}
+
+/* ---------- AYARLAR ---------- */
+function vAyarlar(m, r){
+  if(!isYon()){ m.innerHTML = `<div class="empty">Bu ekran yöneticiler içindir.</div>`; return; }
+  const sek = r.p[0] || "kisiler";
+  const tabs = [["kisiler","Kişiler ve roller"],["birimler","Birimler ve kurumlar"],["hukukcular","Hukukçular"],["turler","Mevzuat türleri"], ...(isOwner()?[["aktarim","Veri aktarımı"]]:[])];
+  const ust = `<h1>Ayarlar</h1><div class="tabs">${tabs.map(([k,t])=>`<a href="#/${k==="aktarim"?"aktarim":"ayarlar/"+k}" class="${sek===k?"on":""}">${t}</a>`).join("")}</div>`;
+  if(sek==="kisiler"){
+    const us = Object.values(S.users).sort((a,b)=>(b.aktif-a.aktif) || a.ad.localeCompare(b.ad,"tr"));
+    m.innerHTML = ust + `<p class="sub">Sadece bu listedeki aktif Gmail adresleri sisteme girebilir.</p>
+      <div class="row" style="margin-bottom:10px"><button class="btn p" id="kyeni">Kişi ekle</button></div>
+      <div class="scroll"><table class="t"><thead><tr><th>Ad soyad</th><th>Gmail</th><th>Rol</th><th>Durum</th><th class="n">Aktif dosya</th><th></th></tr></thead><tbody>
+      ${us.map(u=>`<tr><td>${esc(u.ad)}</td><td>${esc(u.email)}</td><td>${ROL[u.rol]||u.rol}</td><td>${u.aktif?"Aktif":"<span class='sub'>Pasif</span>"}</td>
+        <td class="n">${Object.values(S.dosyalar).filter(d=>d.atananEmail===u.email).length}</td><td><button class="btn sm" data-u="${esc(u.email)}">Düzenle</button></td></tr>`).join("") || `<tr><td colspan="6" class="sub">Henüz kimse eklenmedi.</td></tr>`}</tbody></table></div>`;
+    m.querySelector("#kyeni").onclick = () => kisiModal(null);
+    m.querySelectorAll("[data-u]").forEach(b => b.onclick = () => kisiModal(S.users[b.dataset.u]));
+  } else if(sek==="birimler"){
+    const l = birimListesi();
+    m.innerHTML = ust + `<p class="sub">Liste, dosya açarken ve görüşe açarken kullanıldıkça büyür. Buradan adları ve kısaltmaları düzeltebilirsiniz.</p>
+      <input type="search" id="ba" placeholder="Ara" style="max-width:380px;margin-bottom:10px">
+      <div class="scroll"><table class="t"><thead><tr><th>Ad</th><th>Kısaltma</th><th>Tür</th><th></th></tr></thead><tbody id="bt">
+      ${l.map(b=>`<tr data-ad="${esc(norm(b.ad+" "+(b.kisaltma||"")))}"><td>${esc(b.ad)}</td><td>${esc(b.kisaltma||"")}</td><td>${b.tur==="dis"?"Dış kurum":"İç birim"}</td><td><button class="btn sm" data-b="${b.id}">Düzenle</button></td></tr>`).join("")}</tbody></table></div>`;
+    m.querySelector("#ba").oninput = e => { const a = norm(e.target.value); m.querySelectorAll("#bt tr").forEach(t => t.hidden = !t.dataset.ad.includes(a)); };
+    m.querySelectorAll("[data-b]").forEach(x => x.onclick = () => { const b = S.birimler[x.dataset.b];
+      const md = modal(`<h2>Birimi düzenle</h2><form><label class="f"><span>Ad</span><input type="text" name="ad" value="${esc(b.ad)}"></label>
+        <label class="f"><span>Kısaltma</span><input type="text" name="kisaltma" value="${esc(b.kisaltma||"")}"></label>
+        <label class="f"><span>Tür</span><select name="tur"><option value="ic" ${b.tur==="ic"?"selected":""}>İç birim</option><option value="dis" ${b.tur==="dis"?"selected":""}>Dış kurum</option></select></label></form>
+        <div class="foot"><button class="btn" data-k>Vazgeç</button><button class="btn p" data-ok>Kaydet</button></div>`);
+      md.querySelector("[data-k]").onclick = kapat;
+      md.querySelector("[data-ok]").onclick = async () => { const v = fd(md); try{ await updateDoc(doc(db,"birimler",b.id), { ad:v.ad.trim(), kisaltma:v.kisaltma.trim(), tur:v.tur }); kapat(); }catch(e){ hata(e); } }; });
+  } else if(sek==="hukukcular"){
+    const l = Object.values(S.hukukcular).sort((a,b)=>a.ad.localeCompare(b.ad,"tr"));
+    m.innerHTML = ust + `<div class="row" style="margin-bottom:10px"><input type="text" id="hy" placeholder="Ad Soyad" style="max-width:300px"><button class="btn p" id="he">Ekle</button></div>
+      <div class="scroll"><table class="t"><thead><tr><th>Ad soyad</th><th></th></tr></thead><tbody>${l.map(h=>`<tr><td>${esc(h.ad)}</td><td><button class="btn sm" data-h="${h.id}">Düzenle</button> <button class="btn sm danger" data-hs="${h.id}">Sil</button></td></tr>`).join("")}</tbody></table></div>`;
+    m.querySelector("#he").onclick = async () => { const a = m.querySelector("#hy").value.trim(); if(!a) return; try{ await addDoc(collection(db,"hukukcular"),{ad:a}); }catch(e){ hata(e); } };
+    m.querySelectorAll("[data-h]").forEach(b => b.onclick = async () => { const h = S.hukukcular[b.dataset.h]; const y = prompt("Ad soyad", h.ad); if(y && y.trim()) try{ await updateDoc(doc(db,"hukukcular",h.id),{ad:y.trim()}); }catch(e){ hata(e); } });
+    m.querySelectorAll("[data-hs]").forEach(b => b.onclick = async () => { const h = S.hukukcular[b.dataset.hs]; if(confirm(`${h.ad} listeden silinsin mi? Eski dosyalardaki kayıtlar değişmez.`)) try{ await deleteDoc(doc(db,"hukukcular",h.id)); }catch(e){ hata(e); } });
+  } else if(sek==="turler"){
+    m.innerHTML = ust + `<p class="sub">Her satıra bir tür yazın. Dosya açarken listede olmayan bir tür girilirse buraya kendiliğinden eklenir.</p>
+      <textarea id="tt" style="min-height:300px;max-width:500px">${esc(S.turler.join("\n"))}</textarea><p><button class="btn p" id="tk">Kaydet</button></p>`;
+    m.querySelector("#tk").onclick = async () => { const t = [...new Set(m.querySelector("#tt").value.split("\n").map(x=>x.trim()).filter(Boolean))];
+      try{ await setDoc(doc(db,"ayarlar","genel"), { turler:t }, { merge:true }); toast("Kaydedildi"); }catch(e){ hata(e); } };
+  }
+}
+function kisiModal(u){
+  const yeni = !u;
+  const m = modal(`<h2>${yeni?"Kişi ekle":esc(u.ad)}</h2><form>
+    <label class="f"><span>Ad soyad</span><input type="text" name="ad" value="${esc(u?.ad||"")}" required><div class="hint">Excel'deki yazımla aynı olursa eski kayıtlar bu kişiyle eşleşir.</div></label>
+    <label class="f"><span>Gmail adresi</span><input type="email" name="email" value="${esc(u?.email||"")}" ${yeni?"":"disabled"} required></label>
+    <label class="f"><span>Rol</span><select name="rol">${["uzman","atayan","yonetici"].map(r=>`<option value="${r}" ${u?.rol===r?"selected":""}>${ROL[r]}</option>`).join("")}</select></label>
+    ${yeni?"":`<label class="row"><input type="checkbox" name="aktif" ${u.aktif?"checked":""}> Aktif (sisteme girebilir)</label>`}</form>
+    <p class="err" id="ke"></p><div class="foot"><button class="btn" data-k>Vazgeç</button><button class="btn p" data-ok>Kaydet</button></div>`);
+  m.querySelector("[data-k]").onclick = kapat;
+  m.querySelector("[data-ok]").onclick = async () => {
+    const f = m.querySelector("form"); const ad = f.ad.value.trim(), email = (yeni?f.email.value:u.email).trim().toLowerCase(), rol = f.rol.value, aktif = yeni ? true : f.aktif.checked;
+    if(!ad || !email.includes("@")) { m.querySelector("#ke").textContent = "Ad ve geçerli bir e-posta gerekli."; return; }
+    if(yeni && S.users[email]) { m.querySelector("#ke").textContent = "Bu adres zaten listede."; return; }
+    const dosyalari = Object.values(S.dosyalar).filter(d=>d.atananEmail===email);
+    try{
+      await setDoc(doc(db,"kullanicilar",email), { ad, email, rol, aktif }, { merge:true });
+      if(!yeni && dosyalari.length && u.rol==="uzman" && (rol!=="uzman" || !aktif)) { kapat(); devirModal(email, dosyalari); return; }
+      if(!yeni && u.rol==="atayan" && rol!=="atayan") toast("Atayan değişti. Reddedilip bekleyen onay bildirimleri yeni Atayan'a yönlendirilecek.");
+      kapat(); toast("Kaydedildi");
+    }catch(e){ hata(e); }
+  };
+}
+function devirModal(eski, dosyalar){
+  const uz = aktifKullanicilar("uzman").filter(u=>u.email!==eski);
+  const sec = u => uz.map(x=>`<option value="${esc(x.email)}" ${x.email===u?"selected":""}>${esc(x.ad)}</option>`).join("");
+  const m = modal(`<h2>Dosya devri</h2><p class="sub">${esc(userName(eski))} kişisinin ${dosyalar.length} aktif dosyası var. Kime aktarılsın?</p>
+    <label class="f"><span>Tüm dosyalar için</span><select id="dv"><option value="">Seçin</option>${sec("")}</select></label>
+    <div class="pick" style="max-height:340px">${dosyalar.map(d=>`<label style="display:grid;grid-template-columns:1fr 180px;gap:8px"><span>${esc(d.dosyaNo)} – ${esc(d.ad.slice(0,80))}</span><select data-dv="${d.id}"><option value="">Seçin</option>${sec("")}</select></label>`).join("")}</div>
+    <p class="hint">Arşivdeki dosyalar eski sorumlunun adıyla kalır.</p>
+    <div class="foot"><button class="btn" data-k>Sonra yaparım</button><button class="btn p" data-ok>Aktar</button></div>`);
+  m.querySelector("#dv").onchange = e => m.querySelectorAll("[data-dv]").forEach(s => s.value = e.target.value);
+  m.querySelector("[data-k]").onclick = kapat;
+  m.querySelector("[data-ok]").onclick = async () => {
+    const plan = [...m.querySelectorAll("[data-dv]")].map(s=>[S.dosyalar[s.dataset.dv], s.value]).filter(([,e])=>e);
+    if(plan.length !== dosyalar.length && !confirm(`${dosyalar.length-plan.length} dosya için kişi seçilmedi, bunlar olduğu gibi kalacak. Devam edilsin mi?`)) return;
+    try{
+      for(const [d,e] of plan) await dosyaGuncelle(d, { atananEmail:e, sorumluAd:userName(e) }, `${userName(eski)} kişisinden ${userName(e)} kişisine devredildi`);
+      const kime = {}; plan.forEach(([d,e]) => (kime[e]=kime[e]||[]).push(`${d.dosyaNo} – ${d.ad}`));
+      for(const [e,l] of Object.entries(kime)) await bildir([e], `Size ${l.length} dosya devredildi`, l.join("\n"), null);
+      kapat(); toast(`${plan.length} dosya devredildi`);
+    }catch(x){ hata(x); }
+  };
+}
+
+/* ---------- VERİ AKTARIMI (sistem sahibi) ---------- */
+function vAktarim(m){
+  if(!isOwner()){ m.innerHTML = `<div class="empty">Bu ekran sistem sahibi içindir.</div>`; return; }
+  m.innerHTML = `<h1>Ayarlar</h1><div class="tabs"><a href="#/ayarlar/kisiler">Kişiler ve roller</a><a href="#/ayarlar/birimler">Birimler ve kurumlar</a><a href="#/ayarlar/hukukcular">Hukukçular</a><a href="#/ayarlar/turler">Mevzuat türleri</a><a class="on">Veri aktarımı</a></div>
+    <div class="panel"><p>Excel kayıtlarından hazırlanan <b>aktarim.json</b> dosyasını seçin. Dosya bilgisayarınızdan doğrudan veritabanına yazılır, GitHub'a yüklenmez.</p>
+    <p class="hint">Önce Ayarlar > Kişiler ekranından ekibi ekleyin. Excel'deki sorumlu adları bu kişilerle eşleştirilir.</p>
+    <input type="file" id="af" accept=".json"><div id="ao" style="margin-top:12px"></div></div>`;
+  m.querySelector("#af").onchange = async e => {
+    const f = e.target.files[0]; if(!f) return; let v;
+    try{ v = JSON.parse(await f.text()); }catch(x){ m.querySelector("#ao").innerHTML = `<p class="err">Dosya okunamadı: ${esc(x.message)}</p>`; return; }
+    const kisiMap = {}; Object.values(S.users).forEach(u => kisiMap[norm(u.ad)] = u.email);
+    const eslesen = (v.dosyalar||[]).filter(d=>kisiMap[norm(d.sorumluAd)]).length;
+    m.querySelector("#ao").innerHTML = `<table class="t"><tbody>
+      <tr><td>Dosya</td><td class="n">${(v.dosyalar||[]).length}</td></tr><tr><td>Sorumlusu ekipteki bir kişiyle eşleşen</td><td class="n">${eslesen}</td></tr>
+      <tr><td>Birim / kurum</td><td class="n">${(v.birimler||[]).length}</td></tr><tr><td>Hukukçu</td><td class="n">${(v.hukukcular||[]).length}</td></tr>
+      <tr><td>Ek liste / kayıt</td><td class="n">${(v.ekListeler||[]).length} / ${(v.ekKayitlar||[]).length}</td></tr></tbody></table>
+      ${Object.keys(S.dosyalar).length?`<p class="err">Veritabanında zaten ${Object.keys(S.dosyalar).length} aktif dosya var. Aktarım bunların üzerine ekleme yapar, aynı dosyalar iki kez oluşabilir.</p>`:""}
+      <p><button class="btn p" id="ab">Aktarımı başlat</button></p><p id="ad" class="sub"></p>`;
+    m.querySelector("#ab").onclick = async () => {
+      if(!confirm("Aktarım başlasın mı?")) return; const ad = m.querySelector("#ad"); m.querySelector("#ab").disabled = true;
+      const yaz = async (islemler, etiket) => { for(let i=0;i<islemler.length;i+=400){ const b = writeBatch(db); islemler.slice(i,i+400).forEach(fn=>fn(b)); await b.commit(); ad.textContent = `${etiket}: ${Math.min(i+400,islemler.length)}/${islemler.length}`; } };
+      try{
+        await yaz((v.birimler||[]).map(x=>b=>b.set(doc(db,"birimler",x.id), { ad:x.ad, kisaltma:x.kisaltma||"", tur:x.tur||"ic" })), "Birimler");
+        await yaz((v.hukukcular||[]).map(x=>b=>b.set(doc(collection(db,"hukukcular")), { ad:x.ad })), "Hukukçular");
+        if(v.turler?.length) await setDoc(doc(db,"ayarlar","genel"), { turler:[...new Set([...S.turler, ...v.turler])] }, { merge:true });
+        await yaz((v.ekListeler||[]).map(x=>b=>b.set(doc(db,"ekListeler",x.id), { ad:x.ad, sutunlar:x.sutunlar, salt:!!x.salt, sira:x.sira||0 })), "Listeler");
+        await yaz((v.ekKayitlar||[]).map(x=>b=>b.set(doc(collection(db,"ekKayitlar")), x)), "Liste kayıtları");
+        await yaz((v.dosyalar||[]).map(x=>b=>{ const e = kisiMap[norm(x.sorumluAd)] || ""; const y = { ...x, atananEmail:e, sorumluAd: e ? userName(e) : (x.sorumluAd||""),
+          olusturan:S.email, olusturma:serverTimestamp(), guncelleme:serverTimestamp() }; b.set(doc(collection(db,"dosyalar")), y); }), "Dosyalar");
+        for(const [k,n] of Object.entries(v.sayaclar||{})) if(n > (S.sayac[k]||0)) await setDoc(doc(db,"sayaclar",k), { son:n });
+        S.arsiv = null; ad.textContent = "Aktarım tamamlandı."; toast("Aktarım tamamlandı");
+      }catch(x){ hata(x); ad.textContent = "Aktarım yarıda kaldı. Hata ayrıntısı yukarıda."; }
+    };
+  };
+}
+
+if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
+</script>
+</body>
+</html>
