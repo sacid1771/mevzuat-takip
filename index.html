@@ -95,6 +95,9 @@ textarea{min-height:70px;resize:vertical}
 .item .body{padding:10px 0;min-width:0}
 .item .t{font-weight:600;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .item .m{font-size:13px;color:var(--muted);margin-top:3px}
+.item .acik{font-size:13.5px;margin-top:6px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.item .bek{font-size:13px;color:var(--ink2);margin-top:3px;padding-left:10px;border-left:2px solid var(--line)}
+.item .uyari{font-size:13px;color:var(--gec);margin-top:5px;font-weight:500}
 .item .r{padding:10px 12px 10px 0;display:flex;flex-direction:column;align-items:flex-end;gap:4px}
 @media (max-width:600px){.item{grid-template-columns:5px 1fr}.item .r{grid-column:2;flex-direction:row;flex-wrap:wrap;align-items:center;padding:0 12px 10px 0}}
 table.t{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:8px;overflow:hidden}
@@ -462,44 +465,71 @@ function satir(d){
 function sirala(l){ return l.sort((a,b)=> (b.gelisTarihi||"").localeCompare(a.gelisTarihi||"") || (b.dosyaNo||"").localeCompare(a.dosyaNo||"","tr",{numeric:true})); }
 
 /* ---------- PANO ---------- */
-function vPano(m){
+function satirAciklama(d, ust){
+  const b = S.birimler[d.birimId]; const rm = raporMetni(d);
+  return `<a class="item" href="#/dosya/${d.id}"><div class="spine ${d.kategori}"></div>
+    <div class="body"><div class="t">${esc(d.ad)}</div>
+    <div class="m"><span class="num">${esc(d.dosyaNo||"—")}</span> · ${esc(b?.kisaltma || d.birimAd || "")} · ${esc(d.sorumluAd || userName(d.atananEmail) || "Atanmadı")}</div>
+    ${ust||""}
+    ${rm.aciklama?`<div class="acik">${esc(rm.aciklama)}</div>`:""}
+    ${rm.beklenen?`<div class="bek">${esc(rm.beklenen).replace(/\n/g,"<br>")}</div>`:""}</div>
+    <div class="r">${durumRozet(d)}</div></a>`;
+}
+const gunFark = (a, b) => Math.round((new Date(b) - new Date(a)) / 86400000);
+function gecikmeDetay(d){
+  const bg = bugun(); const l = [];
+  acikBirimler(d).forEach(x => { if(x.son && x.son < bg) l.push(`${x.b.kisa||x.b.ad}: son tarih ${tarih(x.son)}, ${gunFark(x.son,bg)} gün geçti${x.b.ekSure?" (ek süre verilmişti)":""}`); });
+  if(d.durum!=="arsiv" && d.cevapSonTarih && d.cevapSonTarih < bg) l.push(`Cevap son tarihi ${tarih(d.cevapSonTarih)}, ${gunFark(d.cevapSonTarih,bg)} gün geçti`);
+  return l;
+}
+function vPano(m, r){
   const dl = Object.values(S.dosyalar);
   const benim = [];
   dl.forEach(d => {
     if(d.durum==="onay_uzman" && d.atananEmail===S.email) benim.push([d,"Tamamlandı onayınızı bekliyor"]);
     if(d.durum==="onay_yonetici" && isYon()) benim.push([d,"Arşiv onayınızı bekliyor"]);
-    if(d.atananEmail===S.email && d.durum!=="onay_uzman"){ const g=gecikme(d); if(g.gec) benim.push([d,`${g.gec} birimin görüş süresi geçti`]); else if(g.bugunSon) benim.push([d,`${g.bugunSon} birim için bugün son gün`]); }
+    if(d.atananEmail===S.email && d.durum!=="onay_uzman"){ const g=gecikme(d); if(g.bugunSon && !g.gec) benim.push([d,`${g.bugunSon} birim için bugün son gün`]); }
   });
-  const kisiler = aktifKullanicilar().filter(u=>u.rol==="uzman");
-  const ekstra = [...new Set(dl.map(d=>d.atananEmail).filter(e=>e && !kisiler.find(k=>k.email===e)))];
-  const satirlar = [...kisiler.map(k=>k.email), ...ekstra];
-  const say = (e, f) => dl.filter(d=>d.atananEmail===e && f(d)).length;
-  const gecList = dl.filter(d=>gecikme(d).var);
+  const gecList = dl.filter(d=>gecikme(d).var).sort((a,b)=>gecikmeDetay(b).length-gecikmeDetay(a).length);
+  const k = r?.q?.k || "";
+  const katSira = ["A1","A2","B","C"];
+  const aktif = dl.filter(d => !k || d.kategori===k);
   m.innerHTML = `<h1>Pano</h1><p class="sub">${tarih(bugun())} itibarıyla</p>
-  ${benim.length ? `<h2>Sizi bekleyenler</h2><div class="list">${benim.map(([d,n])=>satir(d).replace('<div class="r">',`<div class="r"><span class="badge b-onay_uzman">${esc(n)}</span>`)).join("")}</div>` : ""}
-  <div class="kpi" style="margin-top:14px">
+  <div class="kpi">
     <a href="#/dosyalar?d=devam"><b>${dl.filter(d=>d.durum==="devam").length}</b><span>Devam eden</span></a>
     <a href="#/dosyalar?d=beklemede"><b>${dl.filter(d=>d.durum==="beklemede").length}</b><span>Beklemede</span></a>
     <a href="#/dosyalar?d=cb"><b>${dl.filter(d=>d.cb?.isaret).length}</b><span>Cumhurbaşkanlığında</span></a>
     <a href="#/dosyalar?d=onay"><b>${dl.filter(d=>d.durum.startsWith("onay")).length}</b><span>Onay bekleyen</span></a>
+    <a href="#/dosyalar?d=gec"><b>${gecList.length}</b><span>Gecikmesi olan</span></a>
   </div>
-  <h2>Kişi bazında dosyalar</h2>
-  <div class="scroll"><table class="t"><thead><tr><th>Uzman yardımcısı</th><th class="n">Devam</th><th class="n">Beklemede</th><th class="n">Cumhurbaşkanlığında</th><th class="n">Onay bekliyor</th><th class="n">Arşiv</th><th></th></tr></thead>
+  ${benim.length ? `<h2>Sizi bekleyenler</h2><div class="list">${benim.map(([d,n])=>satirAciklama(d, `<div class="uyari">${esc(n)}</div>`)).join("")}</div>` : ""}
+  <h2>Gecikenler</h2>
+  ${gecList.length ? `<div class="list">${gecList.map(d=>satirAciklama(d, `<div class="uyari">${gecikmeDetay(d).map(esc).join("<br>")}</div>`)).join("")}</div>`
+    : `<div class="empty">Süresi geçmiş görüş ya da cevap tarihi yok.</div>`}
+  <h2>Aktif dosyalar</h2>
+  <div class="tabs">${[["","Tümü",dl.length],...katSira.map(x=>[x,KATS[x],dl.filter(d=>d.kategori===x).length])].map(([kk,t,n])=>`<a href="#/pano${kk?"?k="+kk:""}" class="${k===kk?"on":""}">${kk?`<span class="kat k-${kk}">${kk}</span> `:""}${esc(t)} (${n})</a>`).join("")}</div>
+  ${katSira.filter(x=>!k||x===k).map(x => { const l = aktif.filter(d=>d.kategori===x).sort((a,b)=>(b.gelisTarihi||"").localeCompare(a.gelisTarihi||""));
+    if(!l.length) return ""; return `${k?"":`<h3><span class="kat k-${x}">${x}</span> ${KATS[x]} (${l.length})</h3>`}<div class="list">${l.map(d=>satirAciklama(d)).join("")}</div>`; }).join("") || `<div class="empty">Aktif dosya yok.</div>`}`;
+}
+function rKisi(m){
+  const dl = Object.values(S.dosyalar);
+  const kisiler = aktifKullanicilar().filter(u=>u.rol==="uzman");
+  const ekstra = [...new Set(dl.map(d=>d.atananEmail).filter(e=>e && !kisiler.find(k=>k.email===e)))];
+  const satirlar = [...kisiler.map(k=>k.email), ...ekstra];
+  const say = (e, f) => dl.filter(d=>d.atananEmail===e && f(d)).length;
+  m.innerHTML = `<p><a href="#/raporlar">← Raporlar</a></p><h1>Kişi bazında dosyalar</h1><p class="sub">${tarih(bugun())} itibarıyla. Sayılara tıklayınca ilgili dosyalar listelenir.</p>
+  <div class="scroll"><table class="t"><thead><tr><th>Uzman yardımcısı</th><th class="n">Devam</th><th class="n">Beklemede</th><th class="n">Cumhurbaşkanlığında</th><th class="n">Onay bekliyor</th><th class="n">Gecikmesi olan</th><th class="n">Arşiv</th><th></th></tr></thead>
   <tbody>${satirlar.length ? satirlar.map(e=>`<tr>
     <td><a href="#/dosyalar?p=${encodeURIComponent(e)}">${esc(userName(e))}</a></td>
     <td class="n"><a href="#/dosyalar?p=${encodeURIComponent(e)}&d=devam">${say(e,d=>d.durum==="devam")}</a></td>
     <td class="n"><a href="#/dosyalar?p=${encodeURIComponent(e)}&d=beklemede">${say(e,d=>d.durum==="beklemede")}</a></td>
-    <td class="n">${say(e,d=>d.cb?.isaret)}</td>
-    <td class="n">${say(e,d=>d.durum.startsWith("onay"))}</td>
+    <td class="n"><a href="#/dosyalar?p=${encodeURIComponent(e)}&d=cb">${say(e,d=>d.cb?.isaret)}</a></td>
+    <td class="n"><a href="#/dosyalar?p=${encodeURIComponent(e)}&d=onay">${say(e,d=>d.durum.startsWith("onay"))}</a></td>
+    <td class="n"><a href="#/dosyalar?p=${encodeURIComponent(e)}&d=gec">${say(e,d=>gecikme(d).var)}</a></td>
     <td class="n" data-arsiv="${esc(e)}">…</td>
     <td><button class="btn sm" data-tur="${esc(e)}">Türe göre</button></td></tr>
-    <tr hidden data-turrow="${esc(e)}"><td colspan="7">${turKirilim(dl.filter(d=>d.atananEmail===e))}</td></tr>`).join("")
-    : `<tr><td colspan="7" class="sub">Henüz uzman yardımcısı tanımlanmadı. Ayarlar ekranından ekip üyelerini ekleyin.</td></tr>`}</tbody></table></div>
-  <h2>Gecikenler</h2>
-  ${gecList.length ? `<div class="list">${gecList.map(d=>{ const g=gecikme(d);
-    const n = [g.gec?`${g.gec} birimin görüş süresi geçti`:"", g.cevapGec?`cevap son tarihi ${tarih(d.cevapSonTarih)} geçti`:""].filter(Boolean).join(", ");
-    return satir(d).replace('<div class="r">',`<div class="r"><span class="badge b-gec">${esc(n)}</span>`); }).join("")}</div>`
-    : `<div class="empty">Süresi geçmiş görüş ya da cevap tarihi yok.</div>`}`;
+    <tr hidden data-turrow="${esc(e)}"><td colspan="8">${turKirilim(dl.filter(d=>d.atananEmail===e))}</td></tr>`).join("")
+    : `<tr><td colspan="8" class="sub">Henüz uzman yardımcısı tanımlanmadı.</td></tr>`}</tbody></table></div>`;
   m.querySelectorAll("[data-tur]").forEach(b => b.onclick = () => { const r = m.querySelector(`[data-turrow="${CSS.escape(b.dataset.tur)}"]`); r.hidden = !r.hidden; });
   m.querySelectorAll("[data-arsiv]").forEach(async td => {
     try { const c = await getCountFromServer(query(collection(db,"dosyalar"), where("atananEmail","==",td.dataset.arsiv), where("durum","==","arsiv")));
@@ -878,9 +908,10 @@ function vRaporlar(m){
   m.innerHTML = `<h1>Raporlar</h1><p class="sub">Raporlar Word dosyası olarak indirilir.</p><div class="list">
     <a class="item" href="#/rapor/haftalik"><div class="spine A1"></div><div class="body"><div class="t">Bakanlık Mevzuat Taslakları tablosu</div><div class="m">A1'deki aktif taslaklar: çalışılan, beklemede ve Cumhurbaşkanlığına gönderilenler</div></div><div class="r"></div></a>
     <a class="item" href="#/rapor/genel"><div class="spine"></div><div class="body"><div class="t">Genel durum raporu</div><div class="m">Seçilen kategorilerdeki tüm dosyalar, durumlarına göre</div></div><div class="r"></div></a>
+    <a class="item" href="#/rapor/kisi"><div class="spine"></div><div class="body"><div class="t">Kişi bazında dosyalar</div><div class="m">Uzman yardımcılarının devam eden, beklemede, onay bekleyen ve arşivdeki dosya sayıları; türe göre dağılım</div></div><div class="r"></div></a>
     <a class="item" href="#/rapor/donem"><div class="spine"></div><div class="body"><div class="t">Dönemsel sayılar</div><div class="m">Tarih aralığında gelen, yürürlüğe giren dosyalar; birim bazında dağılım</div></div><div class="r"></div></a></div>`;
 }
-function vRapor(m, r){ ({ haftalik:rHaftalik, genel:rGenel, donem:rDonem }[r.p[0]] || vRaporlar)(m, r); }
+function vRapor(m, r){ ({ haftalik:rHaftalik, genel:rGenel, donem:rDonem, kisi:rKisi }[r.p[0]] || vRaporlar)(m, r); }
 
 function raporBolumleri(dosyalar, cbAyri){
   const devam = dosyalar.filter(d => (d.durum==="devam" || d.durum.startsWith("onay")) && !(cbAyri && d.cb?.isaret));
