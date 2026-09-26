@@ -1145,7 +1145,26 @@ function vAktarim(m){
   m.innerHTML = `<h1>Ayarlar</h1><div class="tabs"><a href="#/ayarlar/kisiler">Kişiler ve roller</a><a href="#/ayarlar/birimler">Birimler ve kurumlar</a><a href="#/ayarlar/hukukcular">Hukukçular</a><a href="#/ayarlar/turler">Mevzuat türleri</a><a class="on">Veri aktarımı</a></div>
     <div class="panel"><p>Excel kayıtlarından hazırlanan <b>aktarim.json</b> dosyasını seçin. Dosya bilgisayarınızdan doğrudan veritabanına yazılır, GitHub'a yüklenmez.</p>
     <p class="hint">Önce Ayarlar > Kişiler ekranından ekibi ekleyin. Excel'deki sorumlu adları bu kişilerle eşleştirilir.</p>
-    <input type="file" id="af" accept=".json"><div id="ao" style="margin-top:12px"></div></div>`;
+    <input type="file" id="af" accept=".json"><div id="ao" style="margin-top:12px"></div></div>
+    <h2>Sorumluları yeniden eşleştir</h2>
+    <div class="panel"><p>Aktarımdan sonra bir kişinin adını düzelttiyseniz ya da yeni kişi eklediyseniz, sorumlusu atanmamış eski dosyaları kişi listesiyle yeniden eşleştirir. Aktif ve arşivdeki dosyalar birlikte taranır.</p>
+    <button class="btn" id="se">Eşleşmeleri bul</button><div id="so" style="margin-top:10px"></div></div>`;
+  m.querySelector("#se").onclick = async () => {
+    const so = m.querySelector("#so"); so.textContent = "Dosyalar taranıyor…";
+    try{ await arsivYukle(true); }catch(x){ hata(x); return; }
+    const kisiMap = {}; Object.values(S.users).forEach(u => kisiMap[norm(u.ad)] = u.email);
+    const bul = Object.values(tumDosyalar()).filter(d => !d.atananEmail && kisiMap[norm(d.sorumluAd)]);
+    if(!bul.length){ so.innerHTML = `<p class="sub">Eşleştirilecek dosya bulunamadı. Kişi adının Excel'deki yazımla aynı olduğundan emin olun.</p>`; return; }
+    const say = {}; bul.forEach(d => { const e = kisiMap[norm(d.sorumluAd)]; say[e] = (say[e]||0)+1; });
+    so.innerHTML = `<table class="t"><tbody>${Object.entries(say).map(([e,n])=>`<tr><td>${esc(userName(e))}</td><td class="n">${n} dosya</td></tr>`).join("")}</tbody></table>
+      <p><button class="btn p" id="su">Eşleştir</button></p>`;
+    m.querySelector("#su").onclick = async () => { m.querySelector("#su").disabled = true;
+      try{ for(let i=0;i<bul.length;i+=400){ const b = writeBatch(db);
+          bul.slice(i,i+400).forEach(d => { const e = kisiMap[norm(d.sorumluAd)]; b.update(doc(db,"dosyalar",d.id), { atananEmail:e, sorumluAd:userName(e) }); });
+          await b.commit(); }
+        S.arsiv = null; so.innerHTML = `<p>${bul.length} dosya eşleştirildi.</p>`; toast("Eşleştirildi");
+      }catch(x){ hata(x); m.querySelector("#su").disabled = false; } };
+  };
   m.querySelector("#af").onchange = async e => {
     const f = e.target.files[0]; if(!f) return; let v;
     try{ v = JSON.parse(await f.text()); }catch(x){ m.querySelector("#ao").innerHTML = `<p class="err">Dosya okunamadı: ${esc(x.message)}</p>`; return; }
