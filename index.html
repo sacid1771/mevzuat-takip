@@ -1071,10 +1071,16 @@ function vAyarlar(m, r){
       md.querySelector("[data-ok]").onclick = async () => { const v = fd(md); try{ await updateDoc(doc(db,"birimler",b.id), { ad:v.ad.trim(), kisaltma:v.kisaltma.trim(), tur:v.tur }); kapat(); }catch(e){ hata(e); } }; });
   } else if(sek==="hukukcular"){
     const l = Object.values(S.hukukcular).sort((a,b)=>a.ad.localeCompare(b.ad,"tr"));
-    m.innerHTML = ust + `<div class="row" style="margin-bottom:10px"><input type="text" id="hy" placeholder="Ad Soyad" style="max-width:300px"><button class="btn p" id="he">Ekle</button></div>
+    m.innerHTML = ust + `<div class="panel" style="margin-bottom:12px"><b>Hukukçu ve sorumlu kayıtlarını düzenle</b><p class="hint" style="margin:4px 0 8px">Aktarımdan gelen hatalı kayıtları toplu düzeltir: listedeki ekip üyelerini çıkarır, sorumlusu ekip dışından biri olan dosyalarda o kişiyi destek alınan hukukçuya taşır, ad yerine barkod ya da not yazılmış kayıtları temizler. Silinen barkod ve notlar dosyanın "Eski kayıttan aktarılan bilgiler" bölümüne eklenir. Uygulamadan önce ne yapılacağını gösterir.</p>
+      <button class="btn p" id="hduz">Kontrol et</button><div id="hdo" style="margin-top:8px"></div></div>
+      <div class="panel" style="margin-bottom:12px"><b>Düzeltmeleri dosyalara uygula</b><p class="hint" style="margin:4px 0 8px">Ad düzelttikten sonra çalıştırın. Aynı ada sahip hukukçuları tek kayıtta birleştirir, dosyalardaki "destek alınan hukukçu" alanlarını ve görüş turlarındaki eski yazımları günceller. İki yazımı birleştirmek için birini diğerinin adıyla birebir aynı yapın, sonra bu düğmeye basın.</p>
+      <button class="btn p" id="htemiz">Düzeltmeleri uygula</button><div id="hto" style="margin-top:8px"></div></div>
+      <div class="row" style="margin-bottom:10px"><input type="text" id="hy" placeholder="Ad Soyad" style="max-width:300px"><button class="btn p" id="he">Ekle</button></div>
       <div class="scroll"><table class="t"><thead><tr><th>Ad soyad</th><th></th></tr></thead><tbody>${l.map(h=>`<tr><td>${esc(h.ad)}</td><td><button class="btn sm" data-h="${h.id}">Düzenle</button> <button class="btn sm danger" data-hs="${h.id}">Sil</button></td></tr>`).join("")}</tbody></table></div>`;
     m.querySelector("#he").onclick = async () => { const a = m.querySelector("#hy").value.trim(); if(!a) return; try{ await addDoc(collection(db,"hukukcular"),{ad:a}); }catch(e){ hata(e); } };
-    m.querySelectorAll("[data-h]").forEach(b => b.onclick = async () => { const h = S.hukukcular[b.dataset.h]; const y = prompt("Ad soyad", h.ad); if(y && y.trim()) try{ await updateDoc(doc(db,"hukukcular",h.id),{ad:y.trim()}); }catch(e){ hata(e); } });
+    m.querySelectorAll("[data-h]").forEach(b => b.onclick = async () => { const h = S.hukukcular[b.dataset.h]; const y = prompt("Ad soyad", h.ad); if(y && y.trim() && y.trim()!==h.ad) try{ await updateDoc(doc(db,"hukukcular",h.id),{ ad:y.trim(), eskiAdlar:[...new Set([...(h.eskiAdlar||[]), h.ad])] }); }catch(e){ hata(e); } });
+    m.querySelector("#htemiz").onclick = () => hukukcuTemizle(m.querySelector("#hto"));
+    m.querySelector("#hduz").onclick = () => hukukcuDuzenle(m.querySelector("#hdo"));
     m.querySelectorAll("[data-hs]").forEach(b => b.onclick = async () => { const h = S.hukukcular[b.dataset.hs]; if(confirm(`${h.ad} listeden silinsin mi? Eski dosyalardaki kayıtlar değişmez.`)) try{ await deleteDoc(doc(db,"hukukcular",h.id)); }catch(e){ hata(e); } });
   } else if(sek==="turler"){
     m.innerHTML = ust + `<p class="sub">Her satıra bir tür yazın. Dosya açarken listede olmayan bir tür girilirse buraya kendiliğinden eklenir.</p>
@@ -1082,6 +1088,110 @@ function vAyarlar(m, r){
     m.querySelector("#tk").onclick = async () => { const t = [...new Set(m.querySelector("#tt").value.split("\n").map(x=>x.trim()).filter(Boolean))];
       try{ await setDoc(doc(db,"ayarlar","genel"), { turler:t }, { merge:true }); toast("Kaydedildi"); }catch(e){ hata(e); } };
   }
+}
+async function hukukcuDuzenle(out){
+  out.textContent = "Dosyalar taranıyor…";
+  try{ await arsivYukle(true); }catch(x){ hata(x); return; }
+  const ekip = {}; Object.values(S.users).forEach(u => ekip[norm(u.ad)] = u);
+  const BK = /\(\s*(\d{6,})\s*(?:\/\s*([+\-]))?\s*\)/g;
+  const temiz = a => String(a||"").replace(BK,"").replace(/\s+/g," ").trim();
+  const barkodlar = a => [...String(a||"").matchAll(BK)].map(m => ({ bk:m[1], s:m[2]||"" }));
+  const cop = a => { const t = temiz(a); return !t || !/^[A-ZÇĞİÖŞÜ]/.test(t); };
+  const bkYazi = l => l.map(x => `(${x.bk}${x.s?"/"+x.s:""})`).join(" ");
+  // 1) liste
+  const listeIslem = [];
+  const mevcut = new Set(Object.values(S.hukukcular).map(h => norm(h.ad)));
+  Object.values(S.hukukcular).forEach(h => {
+    const t = temiz(h.ad);
+    if(ekip[norm(t)]) listeIslem.push([h, "Ekip üyesi, listeden çıkarılacak", "sil"]);
+    else if(!t) listeIslem.push([h, "Sadece barkod, listeden çıkarılacak", "sil"]);
+    else if(cop(h.ad)) listeIslem.push([h, "Ad değil, listeden çıkarılacak", "sil"]);
+    else if(t !== h.ad) listeIslem.push([h, mevcut.has(norm(t)) ? `"${t}" zaten listede, bu kayıt çıkarılacak` : `Ad "${t}" olarak düzeltilecek`, mevcut.has(norm(t)) ? "sil" : "ad", t]);
+  });
+  // 2) dosyalar
+  const yamalar = []; let atanan = 0, tasinan = 0, notlu = 0; const eklenecekHukukcu = new Set();
+  Object.values(tumDosyalar()).forEach(d => {
+    const notlar = []; const patch = {};
+    let atananEmail = d.atananEmail || "", sorumluAd = d.sorumluAd || "";
+    const destek = [];
+    if(sorumluAd && !atananEmail && !ekip[norm(sorumluAd)]){ destek.push(temiz(sorumluAd)); eklenecekHukukcu.add(temiz(sorumluAd)); sorumluAd = ""; tasinan++; }
+    let onceki = "";
+    (d.destekHukukcular||[]).forEach(a => {
+      const t = temiz(a), bl = barkodlar(a), u = ekip[norm(t)];
+      if(u){ if(!atananEmail && u.rol==="uzman"){ atananEmail = u.email; sorumluAd = u.ad; atanan++; }
+             else if(u.email !== atananEmail) notlar.push(`Excel'de birlikte çalışan olarak geçiyor: ${u.ad}`); return; }
+      if(!t){ notlar.push(`Destek alınan hukukçu alanındaki barkod: ${onceki?onceki+" ":""}${bkYazi(bl)}`); return; }
+      if(cop(a)){ notlar.push(`Destek alınan hukukçu alanındaki not: ${a}`); return; }
+      if(bl.length) notlar.push(`${t} ${bkYazi(bl)}`);
+      destek.push(t); onceki = t;
+    });
+    const yeniDestek = [...new Set(destek.filter(Boolean))];
+    if(atananEmail !== (d.atananEmail||"")){ patch.atananEmail = atananEmail; }
+    if(sorumluAd !== (d.sorumluAd||"")) patch.sorumluAd = sorumluAd;
+    if(yeniDestek.join("|") !== (d.destekHukukcular||[]).join("|")) patch.destekHukukcular = yeniDestek;
+    let tdeg = false;
+    const turlar = (d.turlar||[]).map(t => { const yeni = [];
+      (t.birimler||[]).forEach(b => {
+        if(!String(b.key).startsWith("h:")) { yeni.push(b); return; }
+        const ad = temiz(b.ad), bl = barkodlar(b.ad);
+        if(!ad && bl.length){ const o = yeni[yeni.length-1]; tdeg = true;
+          if(o && !o.sonuc){ yeni[yeni.length-1] = { ...o, sonuc:bl[0].s || "?", barkod:bl[0].bk }; } else notlar.push(`Görüş turundaki barkod: ${bkYazi(bl)}`); return; }
+        if(ad !== b.ad){ tdeg = true; yeni.push({ ...b, ad, ...(b.sonuc || !bl.length ? {} : { sonuc:bl[0].s || "?", barkod:bl[0].bk }) }); return; }
+        yeni.push(b); });
+      return { ...t, birimler:yeni }; });
+    if(tdeg) patch.turlar = turlar;
+    if(notlar.length){ patch.eskiBilgi = (d.eskiBilgi ? d.eskiBilgi+"\n\n" : "") + "Kayıt temizliğinde taşınan bilgiler:\n" + notlar.join("\n"); notlu++; }
+    if(Object.keys(patch).length) yamalar.push([d, patch]);
+  });
+  const yeniHukukcu = [...eklenecekHukukcu].filter(a => a && !mevcut.has(norm(a)) && !cop(a));
+  if(!listeIslem.length && !yamalar.length){ out.innerHTML = `<p class="sub">Düzeltilecek kayıt bulunamadı.</p>`; return; }
+  out.innerHTML = `${listeIslem.length?`<table class="t" style="margin-bottom:10px"><thead><tr><th>Listedeki kayıt</th><th>Yapılacak</th></tr></thead><tbody>${listeIslem.map(([h,n])=>`<tr><td>${esc(h.ad)}</td><td>${esc(n)}</td></tr>`).join("")}</tbody></table>`:""}
+    <p>${yamalar.length} dosya güncellenecek: ${atanan} dosya ekipteki sorumlusuna atanacak, ${tasinan} dosyada ekip dışındaki sorumlu "destek alınan hukukçu" alanına taşınacak, ${notlu} dosyada barkod ve notlar "Eski kayıttan aktarılan bilgiler" bölümüne eklenecek.${yeniHukukcu.length?` Hukukçu listesine ${yeniHukukcu.length} kişi eklenecek.`:""}</p>
+    <button class="btn p" id="hduy">Onayla ve uygula</button>`;
+  out.querySelector("#hduy").onclick = async () => { out.querySelector("#hduy").disabled = true;
+    try{
+      for(let i=0;i<yamalar.length;i+=400){ const bt = writeBatch(db); yamalar.slice(i,i+400).forEach(([d,p]) => bt.update(doc(db,"dosyalar",d.id), p)); await bt.commit(); }
+      for(const [h,,islem,yeni] of listeIslem){ if(islem==="sil") await deleteDoc(doc(db,"hukukcular",h.id)); else await updateDoc(doc(db,"hukukcular",h.id), { ad:yeni, eskiAdlar:[...new Set([...(h.eskiAdlar||[]), h.ad])] }); }
+      for(const a of yeniHukukcu) await addDoc(collection(db,"hukukcular"), { ad:a });
+      S.arsiv = null; toast(`Tamamlandı: ${yamalar.length} dosya güncellendi, ${listeIslem.length} liste kaydı düzeltildi`);
+    }catch(x){ hata(x); } };
+}
+async function hukukcuTemizle(out){
+  out.textContent = "Dosyalar taranıyor…";
+  try{ await arsivYukle(true); }catch(x){ hata(x); return; }
+  const gruplar = {};
+  Object.values(S.hukukcular).forEach(h => (gruplar[norm(h.ad)] = gruplar[norm(h.ad)] || []).push(h));
+  const hedef = {}, adHedef = {}, silinecek = [], eskiGuncelle = [];
+  Object.values(gruplar).forEach(g => {
+    const kalan = g[0]; const eskiler = new Set(kalan.eskiAdlar||[]);
+    g.forEach(h => { hedef[h.id] = kalan; adHedef[norm(h.ad)] = kalan.ad; (h.eskiAdlar||[]).forEach(a => { adHedef[norm(a)] = kalan.ad; eskiler.add(a); });
+      if(h.id!==kalan.id){ silinecek.push(h); eskiler.add(h.ad); } });
+    eskiler.delete(kalan.ad);
+    if(g.length>1) eskiGuncelle.push([kalan, [...eskiler]]);
+  });
+  const yamalar = [];
+  Object.values(tumDosyalar()).forEach(d => {
+    const patch = {};
+    const dh = d.destekHukukcular||[];
+    const yeni = [...new Set(dh.map(a => adHedef[norm(a)] || a))];
+    if(yeni.join("|") !== dh.join("|")) patch.destekHukukcular = yeni;
+    let degisti = false;
+    const turlar = (d.turlar||[]).map(t => ({ ...t, birimler:(t.birimler||[]).map(b => {
+      if(!String(b.key).startsWith("h:")) return b;
+      const x = hedef[b.key.slice(2)]; const ad = x ? x.ad : (adHedef[norm(b.ad)] || b.ad); const key = x ? "h:"+x.id : b.key;
+      if(key!==b.key || ad!==b.ad){ degisti = true; return { ...b, key, ad }; } return b; }) }));
+    if(degisti) patch.turlar = turlar;
+    if(Object.keys(patch).length) yamalar.push([d, patch]);
+  });
+  if(!yamalar.length && !silinecek.length){ out.innerHTML = `<p class="sub">Her şey güncel, yapılacak bir değişiklik yok.</p>`; return; }
+  out.innerHTML = `<p>${silinecek.length} yinelenen hukukçu birleştirilecek, ${yamalar.length} dosya güncellenecek.</p><button class="btn p" id="htuy">Onayla ve uygula</button>`;
+  out.querySelector("#htuy").onclick = async () => { out.querySelector("#htuy").disabled = true;
+    try{
+      for(let i=0;i<yamalar.length;i+=400){ const bt = writeBatch(db); yamalar.slice(i,i+400).forEach(([d,p]) => bt.update(doc(db,"dosyalar",d.id), p)); await bt.commit(); }
+      for(const [h,e] of eskiGuncelle) await updateDoc(doc(db,"hukukcular",h.id), { eskiAdlar:e });
+      for(let i=0;i<silinecek.length;i+=400){ const bt = writeBatch(db); silinecek.slice(i,i+400).forEach(h => bt.delete(doc(db,"hukukcular",h.id))); await bt.commit(); }
+      S.arsiv = null; toast(`Düzeltmeler uygulandı: ${silinecek.length} hukukçu birleştirildi, ${yamalar.length} dosya güncellendi`);
+    }catch(x){ hata(x); } };
 }
 async function birimTemizle(out){
   out.textContent = "Dosyalar taranıyor…";
