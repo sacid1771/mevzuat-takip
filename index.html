@@ -510,6 +510,13 @@ function gecikmeDetay(d){
   if(d.durum!=="arsiv" && d.cevapSonTarih && d.cevapSonTarih < bg) l.push(`Cevap son tarihi ${tarih(d.cevapSonTarih)}, ${gunFark(d.cevapSonTarih,bg)} gün geçti`);
   return l;
 }
+const GRUP = {
+  calisilan: d => d.durum==="devam" && !d.cb?.isaret,
+  beklemede: d => d.durum==="beklemede" && !d.cb?.isaret,
+  cb: d => !!d.cb?.isaret && ["devam","beklemede"].includes(d.durum),
+  onay: d => d.durum.startsWith("onay")
+};
+const GRUP_AD = { calisilan:"Çalışılan", beklemede:"Beklemede", cb:"Cumhurbaşkanlığında", onay:"Onay bekleyen" };
 function vPano(m, r){
   const dl = Object.values(S.dosyalar);
   const benim = [];
@@ -526,20 +533,22 @@ function vPano(m, r){
   const aktif = dl.filter(d => !k || d.kategori===k);
   m.innerHTML = `<h1>Pano</h1><p class="sub">${tarih(bugun())} itibarıyla</p>
   <div class="kpi">
-    <a href="#/dosyalar?d=devam"><b>${dl.filter(d=>d.durum==="devam").length}</b><span>Devam eden</span></a>
-    <a href="#/dosyalar?d=beklemede"><b>${dl.filter(d=>d.durum==="beklemede").length}</b><span>Beklemede</span></a>
-    <a href="#/dosyalar?d=cb"><b>${dl.filter(d=>d.cb?.isaret).length}</b><span>Cumhurbaşkanlığında</span></a>
-    <a href="#/dosyalar?d=onay"><b>${dl.filter(d=>d.durum.startsWith("onay")).length}</b><span>Onay bekleyen</span></a>
+    <a href="#/dosyalar?d=calisilan"><b>${dl.filter(GRUP.calisilan).length}</b><span>Çalışılan</span></a>
+    <a href="#/dosyalar?d=beklemede"><b>${dl.filter(GRUP.beklemede).length}</b><span>Beklemede</span></a>
+    <a href="#/dosyalar?d=cb"><b>${dl.filter(GRUP.cb).length}</b><span>Cumhurbaşkanlığında</span></a>
+    <a href="#/dosyalar?d=onay"><b>${dl.filter(GRUP.onay).length}</b><span>Onay bekleyen</span></a>
     <a href="#/dosyalar?d=gec"><b>${gecList.length}</b><span>Gecikmesi olan</span></a>
   </div>
   ${benim.length ? `<h2>Sizi bekleyenler</h2><div class="list">${benim.map(([d,n])=>satirAciklama(d, `<div class="uyari">${esc(n)}</div>`)).join("")}</div>` : ""}
   <h2>Gecikenler</h2>
   ${gecList.length ? `<div class="list">${gecList.map(d=>satirAciklama(d, `<div class="uyari">${gecikmeDetay(d).map(esc).join("<br>")}</div>`)).join("")}</div>`
     : `<div class="empty">Süresi geçmiş görüş ya da cevap tarihi yok.</div>`}
-  <h2>Aktif dosyalar</h2>
+  <h2>Açık dosyalar</h2><p class="hint" style="margin-top:-6px">Arşive alınmamış tüm dosyalar: çalışılan, beklemede, Cumhurbaşkanlığında ve onay bekleyen.</p>
   <div class="tabs">${[["","Tümü",dl.length],...katSira.map(x=>[x,KATS[x],dl.filter(d=>d.kategori===x).length])].map(([kk,t,n])=>`<a href="#/pano${kk?"?k="+kk:""}" class="${k===kk?"on":""}">${kk?`<span class="kat k-${kk}">${kk}</span> `:""}${esc(t)} (${n})</a>`).join("")}</div>
   ${katSira.filter(x=>!k||x===k).map(x => { const l = aktif.filter(d=>d.kategori===x).sort((a,b)=>(b.gelisTarihi||"").localeCompare(a.gelisTarihi||""));
-    if(!l.length) return ""; return `${k?"":`<h3><span class="kat k-${x}">${x}</span> ${KATS[x]} (${l.length})</h3>`}<div class="list">${l.map(d=>satirAciklama(d)).join("")}</div>`; }).join("") || `<div class="empty">Aktif dosya yok.</div>`}`;
+    if(!l.length) return "";
+    const alt = Object.keys(GRUP).map(g => { const gl = l.filter(GRUP[g]); return gl.length ? `<h3 style="font-size:14px;color:var(--muted);margin:14px 0 6px">${GRUP_AD[g]} (${gl.length})</h3><div class="list">${gl.map(d=>satirAciklama(d)).join("")}</div>` : ""; }).join("");
+    return `${k?"":`<h3><span class="kat k-${x}">${x}</span> ${KATS[x]} (${l.length})</h3>`}${alt}`; }).join("") || `<div class="empty">Açık dosya yok.</div>`}`;
 }
 function rKisi(m){
   const dl = Object.values(S.dosyalar);
@@ -548,12 +557,12 @@ function rKisi(m){
   const satirlar = [...kisiler.map(k=>k.email), ...ekstra];
   const say = (e, f) => dl.filter(d=>d.atananEmail===e && f(d)).length;
   m.innerHTML = `<p><a href="#/raporlar">← Raporlar</a></p><h1>Kişi bazında dosyalar</h1><p class="sub">${tarih(bugun())} itibarıyla. Sayılara tıklayınca ilgili dosyalar listelenir.</p>
-  <div class="scroll"><table class="t"><thead><tr><th>Uzman yardımcısı</th><th class="n">Devam</th><th class="n">Beklemede</th><th class="n">Cumhurbaşkanlığında</th><th class="n">Onay bekliyor</th><th class="n">Gecikmesi olan</th><th class="n">Arşiv</th><th></th></tr></thead>
+  <div class="scroll"><table class="t"><thead><tr><th>Uzman yardımcısı</th><th class="n">Çalışılan</th><th class="n">Beklemede</th><th class="n">Cumhurbaşkanlığında</th><th class="n">Onay bekliyor</th><th class="n">Gecikmesi olan</th><th class="n">Arşiv</th><th></th></tr></thead>
   <tbody>${satirlar.length ? satirlar.map(e=>`<tr>
     <td><a href="#/dosyalar?p=${encodeURIComponent(e)}">${esc(userName(e))}</a></td>
-    <td class="n"><a href="#/dosyalar?p=${encodeURIComponent(e)}&d=devam">${say(e,d=>d.durum==="devam")}</a></td>
-    <td class="n"><a href="#/dosyalar?p=${encodeURIComponent(e)}&d=beklemede">${say(e,d=>d.durum==="beklemede")}</a></td>
-    <td class="n"><a href="#/dosyalar?p=${encodeURIComponent(e)}&d=cb">${say(e,d=>d.cb?.isaret)}</a></td>
+    <td class="n"><a href="#/dosyalar?p=${encodeURIComponent(e)}&d=calisilan">${say(e,GRUP.calisilan)}</a></td>
+    <td class="n"><a href="#/dosyalar?p=${encodeURIComponent(e)}&d=beklemede">${say(e,GRUP.beklemede)}</a></td>
+    <td class="n"><a href="#/dosyalar?p=${encodeURIComponent(e)}&d=cb">${say(e,GRUP.cb)}</a></td>
     <td class="n"><a href="#/dosyalar?p=${encodeURIComponent(e)}&d=onay">${say(e,d=>d.durum.startsWith("onay"))}</a></td>
     <td class="n"><a href="#/dosyalar?p=${encodeURIComponent(e)}&d=gec">${say(e,d=>gecikme(d).var)}</a></td>
     <td class="n" data-arsiv="${esc(e)}">…</td>
@@ -583,8 +592,8 @@ async function vDosyalar(m, r, benim){
   let l = Object.values(arsivGerekli ? tumDosyalar() : S.dosyalar);
   if(k) l = l.filter(x=>x.kategori===k);
   if(p) l = l.filter(x=>x.atananEmail===p);
-  const df = { aktif:x=>x.durum!=="arsiv", devam:x=>x.durum==="devam", beklemede:x=>x.durum==="beklemede", cb:x=>x.cb?.isaret && x.durum!=="arsiv",
-    onay:x=>x.durum.startsWith("onay"), gec:x=>gecikme(x).var, yb:x=>ybBekliyor(x), form:x=>x.kategori==="A1" && x.durum!=="arsiv" && !!gdfDurum(x)?.bekleniyor, arsiv:x=>x.durum==="arsiv", hepsi:()=>true }[d] || (()=>true);
+  const df = { aktif:x=>x.durum!=="arsiv", calisilan:GRUP.calisilan, devam:x=>x.durum==="devam", beklemede:GRUP.beklemede, cb:GRUP.cb,
+    onay:GRUP.onay, gec:x=>gecikme(x).var, yb:x=>ybBekliyor(x), form:x=>x.kategori==="A1" && x.durum!=="arsiv" && !!gdfDurum(x)?.bekleniyor, arsiv:x=>x.durum==="arsiv", hepsi:()=>true }[d] || (()=>true);
   l = l.filter(df);
   if(ara){ const a = norm(ara); l = l.filter(x => norm([x.ad,x.dosyaNo,x.birimAd,x.sorumluAd,(x.destekHukukcular||[]).join(" "),x.gelisBarkod,x.eskiBilgi].join(" ")).includes(a)); }
   sirala(l);
@@ -594,7 +603,7 @@ async function vDosyalar(m, r, benim){
   m.innerHTML = `<h1>${esc(baslik)}</h1><p class="sub">${l.length} dosya</p>
     <div class="tabs">${[["","Tümü"],...Object.entries(KATS)].map(([kk,t])=>`<a href="${link({k:kk})}" class="${k===kk?"on":""}">${kk?`<span class="kat k-${kk}">${kk}</span> `:""}${esc(t)}</a>`).join("")}</div>
     <div class="filters"><input type="search" id="fq" placeholder="Ad, dosya no, birim, barkod ara" value="${esc(ara)}">
-      <select id="fd">${[["aktif","Tüm aktif dosyalar"],["devam","Devam ediyor"],["beklemede","Beklemede"],["cb","Cumhurbaşkanlığında"],["onay","Onay bekliyor"],["gec","Gecikmesi olan"],["form","Görüş değerlendirme formu bekleniyor (A1)"],["yb","Yürürlük bildirimi bekleniyor (A1)"],["arsiv","Arşiv"],["hepsi","Aktif + arşiv"]].map(([v,t])=>`<option value="${v}" ${v===d?"selected":""}>${t}</option>`).join("")}</select>
+      <select id="fd">${[["aktif","Tüm açık dosyalar"],["calisilan","Çalışılan"],["beklemede","Beklemede"],["cb","Cumhurbaşkanlığında"],["onay","Onay bekliyor"],["gec","Gecikmesi olan"],["form","Görüş değerlendirme formu bekleniyor (A1)"],["yb","Yürürlük bildirimi bekleniyor (A1)"],["arsiv","Arşiv"],["hepsi","Aktif + arşiv"]].map(([v,t])=>`<option value="${v}" ${v===d?"selected":""}>${t}</option>`).join("")}</select>
       ${kisiSec || "<span></span>"}</div>
     ${l.length ? `<div class="list">${l.slice(0,300).map(satir).join("")}</div>${l.length>300?`<p class="sub">İlk 300 dosya gösteriliyor, aramayı daraltın.</p>`:""}`
       : `<div class="empty">Bu ölçütlere uyan dosya yok.${isMgr()?` <a href="#/yeni">Yeni dosya açın</a>.`:""}</div>`}`;
