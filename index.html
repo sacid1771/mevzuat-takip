@@ -345,7 +345,7 @@ async function bildir(alicilar, baslik, metin, dosyaId){
   if(dd?.deneme){
     if(!set.length) return;
     await addDoc(collection(db,"bildirimler"), { alici:OWNER, baslik:`[Deneme] ${baslik}`, metin:`${metin}\n\nGerçek dosyada gidecek kişiler: ${set.map(userName).join(", ")}`,
-      dosyaId, okundu:false, eposta:false, gonderildi:true, deneme:true, zaman:serverTimestamp(), olusturan:OWNER });
+      dosyaId, okundu:false, eposta:false, gonderildi:true, deneme:true, hedefler:set, zaman:serverTimestamp(), olusturan:OWNER });
     return;
   }
   for(const a of set){
@@ -412,11 +412,15 @@ function dinle(){
   u.push(onSnapshot(collection(db,"hukukcular"), s => { S.hukukcular={}; s.forEach(x=>S.hukukcular[x.id]={id:x.id,...x.data()}); tamam("h"); }, hataDinle("h")));
   u.push(onSnapshot(doc(db,"ayarlar","genel"), s => { S.turler = (s.exists() && s.data().turler?.length) ? s.data().turler : VARSAYILAN_TURLER; tamam("a"); }, hataDinle("a")));
   u.push(onSnapshot(collection(db,"sayaclar"), s => { S.sayac={}; s.forEach(x=>S.sayac[x.id]=x.data().son||0); tamam("s"); }, hataDinle("s")));
-  S.bildirimDinle = () => { if(S.bUnsub) S.bUnsub();
+  S.bildirimDinle = () => { if(S.bUnsub) S.bUnsub(); if(S.bUnsub2) S.bUnsub2(); S.bUnsub2 = null;
+    let asil = [], deneme = [];
+    const birlestir = () => { S.bildirimler = [...asil, ...deneme].sort((a,b)=>(b.zaman?.seconds||0)-(a.zaman?.seconds||0)); tamam("n"); };
     S.bUnsub = onSnapshot(query(collection(db,"bildirimler"), where("alici","==",S.email)), s => {
-      S.bildirimler=[]; s.forEach(x=>S.bildirimler.push({id:x.id,...x.data()}));
-      S.bildirimler.sort((a,b)=>(b.zaman?.seconds||0)-(a.zaman?.seconds||0)); tamam("n"); }, hataDinle("n")); };
-  S.bildirimDinle(); u.push(() => S.bUnsub && S.bUnsub());
+      asil = []; s.forEach(x=>asil.push({id:x.id,...x.data()})); birlestir(); }, hataDinle("n"));
+    if(S.gercek) S.bUnsub2 = onSnapshot(query(collection(db,"bildirimler"), where("alici","==",OWNER)), s => {
+      deneme = []; s.forEach(x=>{ const b = x.data(); if(b.deneme && (b.hedefler||[]).includes(S.email)) deneme.push({id:x.id,...b}); }); birlestir(); }, hataDinle("n"));
+  };
+  S.bildirimDinle(); u.push(() => { S.bUnsub && S.bUnsub(); S.bUnsub2 && S.bUnsub2(); });
   u.push(onSnapshot(collection(db,"ekListeler"), s => { S.ekListeler={}; s.forEach(x=>S.ekListeler[x.id]={id:x.id,...x.data()}); tamam("e"); }, hataDinle("e")));
 }
 
