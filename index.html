@@ -736,12 +736,13 @@ const DX = {
   tamamla(d){
     const sa = d.sonucAdim||[], son = [...sa].reverse().find(x=>NIHAI_SON.includes(x.tip));
     const rg = sa.find(x=>x.tip==="rg"), olur = sa.find(x=>x.tip==="olur");
-    const on = !son ? { tur:SONUC[0], tarih:bugun(), rg:"" } : son.tip==="tiade" ? { tur:"İade edildi", tarih:son.tarih, rg:"" } : son.tip==="geri" ? { tur:"Geri çekildi", tarih:son.tarih, rg:"" }
+    const secenekler = SONUC.filter(x => d.kategori==="A1" ? x!=="Görüş bildirildi" : x!=="Yürürlüğe girdi");
+    const on = !son ? { tur:secenekler[0], tarih:bugun(), rg:"" } : son.tip==="tiade" ? { tur:"İade edildi", tarih:son.tarih, rg:"" } : son.tip==="geri" ? { tur:"Geri çekildi", tarih:son.tarih, rg:"" }
       : { tur:"Yürürlüğe girdi", tarih:(rg||olur||son).tarih, rg: rg ? `RG ${tarih(rg.tarih)} / ${rg.sayi}` : olur ? `Olur ${tarih(olur.tarih)} / ${olur.sayi}` : "" };
     const m = modal(`<h2>Tamamlandı olarak işaretle</h2><p class="sub">Dosya önce uzman yardımcısının, sonra yöneticilerden birinin onayına gider.${son?" Sonuç bilgileri nihai işlemlerden dolduruldu.":""}</p>
-      <form><label class="f"><span>Sonuç</span><select name="tur" required>${SONUC.map(s=>`<option ${s===on.tur?"selected":""}>${s}</option>`).join("")}</select></label>
+      <form><label class="f"><span>Sonuç</span><select name="tur" required>${secenekler.map(s=>`<option ${s===on.tur?"selected":""}>${s}</option>`).join("")}</select></label>
       <label class="f"><span>Sonuç tarihi</span><input type="date" name="tarih" value="${esc(on.tarih)}" required></label>
-      <label class="f"><span>RG sayısı ya da olur barkodu</span><input type="text" name="rg" value="${esc(on.rg)}" placeholder="Yürürlüğe girdiyse doldurun"></label></form>
+      ${d.kategori==="A1" ? `<label class="f"><span>RG sayısı ya da olur barkodu</span><input type="text" name="rg" value="${esc(on.rg)}" placeholder="Yürürlüğe girdiyse doldurun"></label>` : `<input type="hidden" name="rg" value="">`}</form>
       <div class="foot"><button class="btn" data-k>Vazgeç</button><button class="btn p" data-ok>Tamamlandı</button></div>`);
     m.querySelector("[data-k]").onclick=kapat;
     m.querySelector("[data-ok]").onclick = async () => { const v = fd(m);
