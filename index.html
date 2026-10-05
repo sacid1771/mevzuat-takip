@@ -98,6 +98,7 @@ textarea{min-height:70px;resize:vertical}
 .item .m{font-size:13px;color:var(--muted);margin-top:3px}
 .item .acik{font-size:13.5px;margin-top:6px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .item .bek{font-size:13px;color:var(--ink2);margin-top:3px;padding-left:10px;border-left:2px solid var(--line)}
+.item .not{font-size:13px;color:var(--muted);margin-top:4px;font-style:italic}
 .item .uyari{font-size:13px;color:var(--gec);margin-top:5px;font-weight:500}
 .item .r{padding:10px 12px 10px 0;display:flex;flex-direction:column;align-items:flex-end;gap:4px}
 @media (max-width:600px){.item{grid-template-columns:5px 1fr}.item .r{grid-column:2;flex-direction:row;flex-wrap:wrap;align-items:center;padding:0 12px 10px 0}}
@@ -260,7 +261,8 @@ function olaylar(d){
   let iadeVar = false; ev.forEach(e => { if(e.tip==="iade") iadeVar = true; else if(e.tip==="form" && iadeVar) e.revize = true; else if(e.tip==="istem") iadeVar = false; });
   return ev;
 }
-const olayAnahtar = d => { const ev = olaylar(d); const l = ev[ev.length-1]; return `${ev.length}|${l.tip}|${l.id||""}|${l.tarih}`; };
+const raporNotlari = d => (d.notlar||[]).filter(n=>n.rapor).sort((a,b)=>(a.tarih||"").localeCompare(b.tarih||"") || (a.zaman||"").localeCompare(b.zaman||""));
+const olayAnahtar = d => { const ev = olaylar(d); const l = ev[ev.length-1]; const rn = raporNotlari(d); return `${ev.length}|${l.tip}|${l.id||""}|${l.tarih}` + (rn.length ? "|n" + rn.map(n=>n.id+":"+n.metin.length).join(",") : ""); };
 function gdfListe(d){
   const l = [...(d.gdf||[]).map(g=>({ ...g, kaynak:"gdf" })),
     ...(d.adimlar||[]).filter(a=>["istem","form","iade"].includes(a.tip)).map(a=>({ id:a.id, tip:a.tip, tarih:a.tarih, sayi:a.barkod, not:a.not, ekleyen:a.ekleyen, kaynak:"adim" }))];
@@ -320,6 +322,8 @@ function otoMetin(d){
   if(d.cb?.isaret && son.tip!=="cb") { /* CB sonrası gelişme */ }
   const bek = bekleyenSatiri(d);
   if(bek) b = b ? b+"\n"+bek : bek;
+  const rn = raporNotlari(d);
+  if(rn.length) a = [a, ...rn.map(n=>n.metin)].filter(Boolean).join("\n");
   return { aciklama:a, beklenen:b };
 }
 function raporMetni(d){
@@ -558,7 +562,8 @@ function satirAciklama(d, ust){
     <div class="m"><span class="num">${esc(d.dosyaNo||"—")}</span> · ${esc(b?.kisaltma || d.birimAd || "")} · ${esc(d.sorumluAd || userName(d.atananEmail) || "Atanmadı")}</div>
     ${ust||""}
     ${rm.aciklama?`<div class="acik">${esc(rm.aciklama)}</div>`:""}
-    ${rm.beklenen?`<div class="bek">${esc(rm.beklenen).replace(/\n/g,"<br>")}</div>`:""}</div>
+    ${rm.beklenen?`<div class="bek">${esc(rm.beklenen).replace(/\n/g,"<br>")}</div>`:""}
+    ${(d.notlar||[]).length?`<div class="not">Not (${tarih([...d.notlar].sort((a,b)=>(b.tarih||"").localeCompare(a.tarih||""))[0].tarih)}): ${esc([...d.notlar].sort((a,b)=>(b.tarih||"").localeCompare(a.tarih||""))[0].metin.slice(0,160))}</div>`:""}</div>
     <div class="r">${durumRozet(d)}</div></a>`;
 }
 const gunFark = (a, b) => Math.round((new Date(b) - new Date(a)) / 86400000);
@@ -707,6 +712,7 @@ function aramaParcalari(d){
   if(d.sonuc) p.push(["Sonuç", `${d.sonuc.rgSayi||""} ${d.sonuc.aciklama||""}`]);
   if(d.raporDuzeltme) p.push(["Rapor metni", `${d.raporDuzeltme.aciklama||""} ${d.raporDuzeltme.beklenen||""}`]);
   p.push(["Beklemede gerekçesi", d.beklemeGerekce], ["Eski kayıttan aktarılan bilgiler", d.eskiBilgi]);
+  (d.notlar||[]).forEach(n => p.push(["Not", n.metin]));
   (d.gecmis||[]).forEach(g => p.push(["Dosya geçmişi", g.olay]));
   return p;
 }
@@ -774,6 +780,12 @@ async function vDosya(m, r){
   <p class="hint" style="margin-top:-6px">${d.kategori==="A1" ? "Son kontrol ve raportör dönüşü gibi aşamayı değiştiren diğer yazılar. Haftalık rapordaki açıklamalar görüş turları, görüş değerlendirme formu, nihai işlemler ve bu adımlardan oluşur; hangisi en son tarihliyse rapora o yansır." : "Aşamayı değiştiren diğer yazılar. Rapordaki açıklamalar görüş turları ve bu adımlardan oluşur; hangisi en son tarihliyse rapora o yansır."}</p>
   ${(d.adimlar||[]).filter(a=>ADIM[a.tip]).length ? `<ul class="tl">${[...d.adimlar].filter(a=>ADIM[a.tip]).sort((a,b)=>(a.tarih||"").localeCompare(b.tarih||"")).map(a=>`<li><b>${esc((ADIM[a.tip]||ADIM_ESKI[a.tip])||a.tip)}</b> – ${tarih(a.tarih)}${a.birim?` – ${esc(a.birim)}`:""}${a.barkod?` <span class="num">(${esc(a.barkod)})</span>`:""}${a.not?`<br>${esc(a.not)}`:""}<br><small>${esc(a.ekleyen||"")}</small> ${ew?`<button class="btn sm danger" data-x="adimsil" data-id="${a.id}">Sil</button>`:""}</li>`).join("")}</ul>` : `<div class="empty">Adım girilmedi.</div>`}
   ${ew?`<p><button class="btn" data-x="adimekle">Adım ekle</button></p>`:""}
+
+  <h2>Notlar</h2>
+  <p class="hint" style="margin-top:-6px">Dosyayla ilgili serbest notlar: telefon görüşmeleri, hatırlatmalar, dikkat edilecekler. "Rapora girsin" işaretli notlar raporda açıklamaların sonuna eklenir, diğerleri sadece burada kalır.</p>
+  ${(d.notlar||[]).length ? `<ul class="tl">${[...d.notlar].sort((a,b)=>(b.tarih||"").localeCompare(a.tarih||"") || (b.zaman||"").localeCompare(a.zaman||"")).map(n=>`<li>${n.rapor?`<span class="badge b-devam" style="margin-right:6px">Raporda</span>`:""}${esc(n.metin).replace(/\n/g,"<br>")}<br><small>${esc(n.kim||"")} · ${tarih(n.tarih)}</small>
+    ${ew && (n.kimEmail===S.email || isMgr()) ? ` <button class="btn sm" data-x="notduz" data-id="${n.id}">Düzelt</button> <button class="btn sm danger" data-x="notsil" data-id="${n.id}">Sil</button>` : ""}</li>`).join("")}</ul>` : `<div class="empty">Not yok.</div>`}
+  ${ew?`<p><button class="btn" data-x="notekle">Not ekle</button></p>`:""}
 
   ${d.eskiBilgi?`<h2>Eski kayıttan aktarılan bilgiler</h2><div class="pre">${esc(d.eskiBilgi)}</div>`:""}
 
@@ -1077,6 +1089,10 @@ const DX = {
     const patch = ds.k==="adim" ? { adimlar:(d.adimlar||[]).filter(a=>a.id!==g.id) } : { gdf:(d.gdf||[]).filter(x=>x.id!==g.id) };
     try{ await dosyaGuncelle(d, patch, `Görüş değerlendirme kaydı silindi: ${GDF_AD(g)} (${tarih(g.tarih)})`); }catch(x){ hata(x); }
   },
+  notekle(d){ notModal(d, null); },
+  notduz(d, ds){ notModal(d, (d.notlar||[]).find(n=>n.id===ds.id)); },
+  async notsil(d, ds){ const n = (d.notlar||[]).find(x=>x.id===ds.id); if(!n || !confirm("Not silinsin mi?")) return;
+    try{ await dosyaGuncelle(d, { notlar:d.notlar.filter(x=>x.id!==ds.id) }, `Not silindi (${tarih(n.tarih)})`); }catch(x){ hata(x); } },
   async adimsil(d, ds){ const a = (d.adimlar||[]).find(x=>x.id===ds.id); if(!a || !confirm(`"${(ADIM[a.tip]||ADIM_ESKI[a.tip])}" adımı silinsin mi?`)) return;
     try{ await dosyaGuncelle(d, { adimlar:d.adimlar.filter(x=>x.id!==ds.id) }, `Adım silindi: ${(ADIM[a.tip]||ADIM_ESKI[a.tip])} (${tarih(a.tarih)})`); }catch(x){ hata(x); } }
 };
@@ -1086,6 +1102,19 @@ async function turBittiBildir(d, eskiTur, yeniTur){
   const bl = yeniTur.birimler, arti = bl.filter(b=>b.sonuc==="+").length;
   await bildir([d.atananEmail, ...yoneticiler()], "Görüş süreci tamamlandı",
     `${d.dosyaNo} – ${d.ad}\n${yeniTur.tip==="dis"?"Dış":"İç"} görüş turu (${tarih(yeniTur.tarih)}): ${bl.length} yerin tamamı cevaplandı, ${arti} yerden öneri geldi.`, d.id);
+}
+function notModal(d, n){
+  const m = modal(`<h2>${n?"Notu düzelt":"Not ekle"}</h2><form>
+    <label class="f"><span>Tarih</span><input type="date" name="t" value="${esc(n?.tarih||bugun())}" required></label>
+    <label class="f"><span>Not</span><textarea name="metin" required style="min-height:90px">${esc(n?.metin||"")}</textarea></label>
+    <label class="row"><input type="checkbox" name="rapor" ${n?.rapor?"checked":""}> Rapora girsin<span class="hint" style="margin:0 0 0 6px">(haftalık ve genel durum raporunda açıklamalar sütununun sonuna eklenir)</span></label></form>
+    <div class="foot"><button class="btn" data-k>Vazgeç</button><button class="btn p" data-ok>Kaydet</button></div>`);
+  m.querySelector("[data-k]").onclick = kapat;
+  m.querySelector("[data-ok]").onclick = async () => { const v = fd(m); const metin = (v.metin||"").trim(); if(!metin) return toast("Not boş olamaz.");
+    const rapor = v.rapor === "on";
+    const yeni = n ? (d.notlar||[]).map(x => x.id!==n.id ? x : { ...x, metin, tarih:v.t, rapor, duzenleyen:myName(), duzenlemeZamani:simdi() })
+                   : [...(d.notlar||[]), { id:uid(), metin, tarih:v.t, rapor, kim:myName(), kimEmail:S.email, zaman:simdi() }];
+    try{ await dosyaGuncelle(d, { notlar:yeni }, n ? "Not düzeltildi" : `Not eklendi: ${metin.slice(0,80)}${metin.length>80?"…":""}`); kapat(); }catch(x){ hata(x); } };
 }
 function kayitDuzeltModal(baslik, k, sayiVar, kaydet){
   const m = modal(`<h2>${esc(baslik)}</h2><form>
@@ -1279,7 +1308,8 @@ function raporBolumleri(dosyalar, haftalik){
   return b;
 }
 function cbAsama(d){ const ev = olaylar(d); const son = ev[ev.length-1]; const rm = raporMetni(d);
-  if(rm.duzeltildi) return rm.aciklama; return son.tip==="cb" ? "Raportör incelemesinde." : olayMetni(d, son).a; }
+  if(rm.duzeltildi) return rm.aciklama; const a = son.tip==="cb" ? "Raportör incelemesinde." : olayMetni(d, son).a;
+  const rn = raporNotlari(d); return rn.length ? [a, ...rn.map(n=>n.metin)].filter(Boolean).join("\n") : a; }
 function kisa(d){ return S.birimler[d.birimId]?.kisaltma || d.birimAd || ""; }
 
 function onizleme(bolumler, duzenlenebilir){
@@ -1736,12 +1766,31 @@ function vAktarim(m){
     <div class="panel"><p>Excel kayıtlarından hazırlanan <b>aktarim.json</b> dosyasını seçin. Dosya bilgisayarınızdan doğrudan veritabanına yazılır, GitHub'a yüklenmez.</p>
     <p class="hint">Önce Ayarlar > Kişiler ekranından ekibi ekleyin. Excel'deki sorumlu adları bu kişilerle eşleştirilir.</p>
     <input type="file" id="af" accept=".json"><div id="ao" style="margin-top:12px"></div></div>
+    <h2>Yedek al</h2>
+    <div class="panel"><p>Veritabanının tamamını (dosyalar, arşiv, kişiler, birimler, hukukçular, listeler, bildirimler) tek bir JSON dosyası olarak bilgisayarınıza indirir. Ayrıca tüm dosyaların özet listesini Excel'de açılabilen CSV olarak verir. Bu yedeği düzenli olarak alıp kurum ağında güvenli bir yerde saklayın.</p>
+    <div class="row"><button class="btn p" id="yedek">Yedek indir (JSON + CSV)</button><span id="yo" class="sub"></span></div></div>
     <h2>Deneme verilerini temizle</h2>
     <div class="panel"><p>"Deneme dosyası" olarak açılan tüm dosyaları ve bunlarla ilgili deneme bildirimlerini siler. Gerçek dosyalara dokunmaz.</p>
     <button class="btn danger" id="dsil">Deneme verilerini bul</button><div id="dso" style="margin-top:10px"></div></div>
     <h2>Sorumluları yeniden eşleştir</h2>
     <div class="panel"><p>Aktarımdan sonra bir kişinin adını düzelttiyseniz ya da yeni kişi eklediyseniz, sorumlusu atanmamış eski dosyaları kişi listesiyle yeniden eşleştirir. Aktif ve arşivdeki dosyalar birlikte taranır.</p>
     <button class="btn" id="se">Eşleşmeleri bul</button><div id="so" style="margin-top:10px"></div></div>`;
+  m.querySelector("#yedek").onclick = async () => { const yo = m.querySelector("#yo"); yo.textContent = "Hazırlanıyor…";
+    try{
+      const koleksiyonlar = ["dosyalar","kullanicilar","birimler","hukukcular","ayarlar","sayaclar","ekListeler","ekKayitlar","bildirimler","degisiklikTalepleri"];
+      const yedek = { tarih:new Date().toISOString(), proje:firebaseConfig.projectId, veriler:{} };
+      const ts = v => (v && typeof v.toDate==="function") ? v.toDate().toISOString() : v;
+      const temizle = o => { if(Array.isArray(o)) return o.map(temizle); if(o && typeof o==="object"){ if(typeof o.toDate==="function") return ts(o); const r={}; for(const k in o) r[k]=temizle(o[k]); return r; } return o; };
+      for(const k of koleksiyonlar){ const q = await getDocs(collection(db,k)); yedek.veriler[k] = q.docs.map(x => ({ id:x.id, ...temizle(x.data()) })); }
+      const gun = bugun();
+      indir(new Blob([JSON.stringify(yedek)], {type:"application/json"}), `mevzuat-takip-yedek-${gun}.json`);
+      const dl = yedek.veriler.dosyalar;
+      const csv = "\ufeff" + [["Dosya no","Kategori","Ad","Tür","Hazırlayan","Geliş tarihi","Geldiği barkod","Sorumlu","Durum","Sonuç","Sonuç tarihi","Arşiv tarihi","Rapor açıklaması","Beklenen işlem"],
+        ...dl.map(d => { const rm = raporMetni(d); return [d.dosyaNo,d.kategori,d.ad,d.tur,d.birimAd,tarih(d.gelisTarihi),d.gelisBarkod,d.sorumluAd,DURUM[d.durum]||d.durum,d.sonuc?.tur||"",tarih(d.sonuc?.tarih),tarih(d.arsivTarihi),rm.aciklama,rm.beklenen]; })]
+        .map(r => r.map(c => `"${String(c??"").replace(/"/g,'""')}"`).join(";")).join("\r\n");
+      setTimeout(() => indir(new Blob([csv], {type:"text/csv;charset=utf-8"}), `mevzuat-takip-dosyalar-${gun}.csv`), 800);
+      yo.textContent = `Yedek alındı: ${dl.length} dosya, ${koleksiyonlar.length} koleksiyon.`;
+    }catch(x){ hata(x); yo.textContent = ""; } };
   m.querySelector("#dsil").onclick = async () => { const o = m.querySelector("#dso"); o.textContent = "Aranıyor…";
     try{ const dq = await getDocs(query(collection(db,"dosyalar"), where("deneme","==",true)));
       const bq = await getDocs(query(collection(db,"bildirimler"), where("deneme","==",true)));
